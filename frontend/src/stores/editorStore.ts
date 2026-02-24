@@ -6,6 +6,7 @@ export interface EditorSettings {
 export interface GuideMetrics {
   totalCapacity: number;
   filledRatio: number;
+  currentLines: number;
 }
 
 export interface EditorState {
@@ -28,7 +29,21 @@ export function recalculateGuideMetrics(
   const totalCapacity = state.settings.lineLength * state.settings.pageCount;
   const filledRatio = totalCapacity > 0 ? Math.min(state.content.length / totalCapacity, 1) : 0;
 
-  return { totalCapacity, filledRatio };
+  let currentLines = 0;
+  if (state.content.length === 0) {
+    currentLines = 0;
+  } else if (state.settings.lineLength > 0) {
+    const paragraphs = state.content.split('\n');
+    for (const p of paragraphs) {
+      if (p.length === 0) {
+        currentLines += 1;
+      } else {
+        currentLines += Math.ceil(p.length / state.settings.lineLength);
+      }
+    }
+  }
+
+  return { totalCapacity, filledRatio, currentLines };
 }
 
 export function createInitialEditorState(): EditorState {
@@ -41,6 +56,7 @@ export function createInitialEditorState(): EditorState {
     metrics: {
       totalCapacity: DEFAULT_SETTINGS.lineLength * DEFAULT_SETTINGS.pageCount,
       filledRatio: 0,
+      currentLines: 0,
     },
   };
 }

@@ -1,7 +1,6 @@
 import type { ReactElement } from 'react';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
-import type { Editor } from '../components/editor/VerticalEditor';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { AdvicePanel } from '../components/advice/AdvicePanel';
 import { DiffView } from '../components/advice/DiffView';
 import { PartialAdvice } from '../components/advice/PartialAdvice';
@@ -30,6 +29,7 @@ import {
 } from '../services/documentService';
 import type { ScriptDocument } from '../services/documentRepository';
 import { requestExport } from '../services/exportService';
+import { extractTextFromDocx } from '../services/importService';
 import {
   createAdviceState,
   selectPanelModel,
@@ -120,7 +120,8 @@ export function EditorPage(): ReactElement {
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [documentMessage, setDocumentMessage] = useState('');
   const [documentPending, setDocumentPending] = useState(false);
-  const [tiptapEditor, setTiptapEditor] = useState<Editor | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const activeDocumentId = documentId || localDocumentId;
 
@@ -194,16 +195,13 @@ export function EditorPage(): ReactElement {
   }, []);
 
   const onToolbarApply = (action: ToolbarAction): void => {
-    if (tiptapEditor) {
-      insertToolbarAction(tiptapEditor, action);
+    if (textareaRef.current) {
+      const newContent = insertToolbarAction(textareaRef.current, state.content, action);
+      setState((current) => updateContent(current, newContent));
     } else {
       setState((current) => updateContent(current, applyToolbarAction(current.content, action)));
     }
   };
-
-  const onEditorReady = useCallback((editor: Editor) => {
-    setTiptapEditor(editor);
-  }, []);
 
   const remaining = useMemo(() => {
     return Math.max(state.metrics.totalCapacity - state.content.length, 0);
@@ -330,6 +328,17 @@ export function EditorPage(): ReactElement {
     }
   };
 
+  const onImportDocx = async (file: File): Promise<void> => {
+    try {
+      const text = await extractTextFromDocx(file);
+      setState((current) => updateContent(current, text));
+      setDocumentMessage(`Word読み込み完了: ${file.name}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setDocumentMessage(`Word読み込み失敗: ${message}`);
+    }
+  };
+
   const onExport = async (): Promise<void> => {
     try {
       const payload = await requestExport({
@@ -407,6 +416,20 @@ export function EditorPage(): ReactElement {
           <button type="button" onClick={() => void onLoadDocument()} disabled={documentPending}>
             読み込み
           </button>
+          <button type="button" onClick={() => fileInputRef.current?.click()}>
+            Word読み込み
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".docx"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.currentTarget.files?.[0];
+              if (file) void onImportDocx(file);
+              e.currentTarget.value = '';
+            }}
+          />
         </div>
         <p className="status-text">現在のドキュメントID: {documentId || '(未保存)'}</p>
         {documentMessage ? <p className="status-text">{documentMessage}</p> : null}
@@ -422,11 +445,12 @@ export function EditorPage(): ReactElement {
       <VerticalEditor
         value={state.content}
         onChange={(value) => setState((current) => updateContent(current, value))}
-        onEditorReady={onEditorReady}
+        textareaRef={textareaRef}
+        lineCount={Math.max(state.metrics.currentLines, state.settings.pageCount * 20)}
       />
 
       <p>
-        文字数: {state.content.length} / 目安容量: {state.metrics.totalCapacity} / 残り: {remaining}
+        文字数: {state.content.length} / 行数: {state.metrics.currentLines} / 目安容量: {state.metrics.totalCapacity}字 ({state.settings.pageCount}枚) / 残り: {remaining}字
       </p>
 
       <CharacterTable value={characters} onChange={setCharacters} />

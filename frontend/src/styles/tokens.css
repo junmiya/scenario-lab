@@ -27,7 +27,7 @@
     -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic',
     'Segoe UI', sans-serif;
   --font-mono: 'SF Mono', Monaco, 'Courier New', monospace;
-  --font-editor: 'SF Mono', monospace;
+  --font-editor: 'Hiragino Mincho ProN', 'YuMincho', 'Yu Mincho', 'Noto Serif JP', serif;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -75,5 +75,5 @@
 
   /* Vertical editor */
   --editor-min-height: 420px;
-  --editor-line-height: 1.8;
+  --editor-line-height: 2.0;
 }

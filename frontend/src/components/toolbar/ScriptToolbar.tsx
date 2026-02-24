@@ -1,5 +1,4 @@
 import type { ReactElement } from 'react';
-import type { Editor } from '@tiptap/react';
 
 export type ToolbarAction = 'scene' | 'dialogue' | 'action';
 
@@ -13,9 +12,21 @@ export function applyToolbarAction(content: string, action: ToolbarAction): stri
   return `${content}${INSERT_TEMPLATES[action]}`;
 }
 
-export function insertToolbarAction(editor: Editor, action: ToolbarAction): void {
-  const template = INSERT_TEMPLATES[action].replace(/\n$/, '');
-  editor.chain().focus().insertContent(template).createParagraphNear().run();
+export function insertToolbarAction(
+  textarea: HTMLTextAreaElement,
+  content: string,
+  action: ToolbarAction,
+): string {
+  const template = INSERT_TEMPLATES[action];
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const newContent = content.substring(0, start) + template + content.substring(end);
+  const newPos = start + template.length;
+  requestAnimationFrame(() => {
+    textarea.focus();
+    textarea.setSelectionRange(newPos, newPos);
+  });
+  return newContent;
 }
 
 interface ScriptToolbarProps {
