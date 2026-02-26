@@ -6,7 +6,8 @@
     ]
   },
   "firestore": {
-    "rules": "infra/firestore.rules"
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
   },
   "hosting": {
     "public": "frontend/dist",
