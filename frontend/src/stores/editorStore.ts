@@ -16,29 +16,38 @@ export interface EditorState {
   content: string;
   settings: EditorSettings;
   metrics: GuideMetrics;
+  synopsisSettings: EditorSettings;
+  synopsisMetrics: GuideMetrics;
 }
 
-const DEFAULT_SETTINGS: EditorSettings = {
+export const DEFAULT_SETTINGS: EditorSettings = {
   lineLength: 20,
   pageCount: 10,
 };
 
+export const DEFAULT_SYNOPSIS_SETTINGS: EditorSettings = {
+  lineLength: 20,
+  pageCount: 2,
+};
+
 export function recalculateGuideMetrics(
-  state: Pick<EditorState, 'content' | 'settings'>,
+  content: string,
+  settings: EditorSettings,
 ): GuideMetrics {
-  const totalCapacity = state.settings.lineLength * state.settings.pageCount;
-  const filledRatio = totalCapacity > 0 ? Math.min(state.content.length / totalCapacity, 1) : 0;
+  const totalCapacity = settings.lineLength * settings.pageCount;
+  const contentLength = content.replace(/[\r\n]/g, '').length;
+  const filledRatio = totalCapacity > 0 ? Math.min(contentLength / totalCapacity, 1) : 0;
 
   let currentLines = 0;
-  if (state.content.length === 0) {
+  if (content.length === 0) {
     currentLines = 0;
-  } else if (state.settings.lineLength > 0) {
-    const paragraphs = state.content.split('\n');
+  } else if (settings.lineLength > 0) {
+    const paragraphs = content.split('\n');
     for (const p of paragraphs) {
       if (p.length === 0) {
         currentLines += 1;
       } else {
-        currentLines += Math.ceil(p.length / state.settings.lineLength);
+        currentLines += Math.ceil(p.length / settings.lineLength);
       }
     }
   }
@@ -58,15 +67,31 @@ export function createInitialEditorState(): EditorState {
       filledRatio: 0,
       currentLines: 0,
     },
+    synopsisSettings: DEFAULT_SYNOPSIS_SETTINGS,
+    synopsisMetrics: {
+      totalCapacity: DEFAULT_SYNOPSIS_SETTINGS.lineLength * DEFAULT_SYNOPSIS_SETTINGS.pageCount,
+      filledRatio: 0,
+      currentLines: 0,
+    },
   };
 }
 
 export function updateContent(state: EditorState, content: string): EditorState {
   const next = { ...state, content };
-  return { ...next, metrics: recalculateGuideMetrics(next) };
+  return { ...next, metrics: recalculateGuideMetrics(next.content, next.settings) };
 }
 
 export function updateSettings(state: EditorState, settings: EditorSettings): EditorState {
   const next = { ...state, settings };
-  return { ...next, metrics: recalculateGuideMetrics(next) };
+  return { ...next, metrics: recalculateGuideMetrics(next.content, next.settings) };
+}
+
+export function updateSynopsis(state: EditorState, synopsis: string): EditorState {
+  const next = { ...state, synopsis };
+  return { ...next, synopsisMetrics: recalculateGuideMetrics(next.synopsis, next.synopsisSettings) };
+}
+
+export function updateSynopsisSettings(state: EditorState, synopsisSettings: EditorSettings): EditorState {
+  const next = { ...state, synopsisSettings };
+  return { ...next, synopsisMetrics: recalculateGuideMetrics(next.synopsis, next.synopsisSettings) };
 }

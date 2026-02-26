@@ -5,9 +5,11 @@ interface VerticalEditorProps {
   onChange: (value: string) => void;
   textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
   lineCount?: number;
+  charsPerColumn?: number;
+  placeholder?: string;
 }
 
-export function VerticalEditor({ value, onChange, textareaRef, lineCount = 1 }: VerticalEditorProps): ReactElement {
+export function VerticalEditor({ value, onChange, textareaRef, lineCount = 1, charsPerColumn = 20, placeholder }: VerticalEditorProps): ReactElement {
   const internalRef = useRef<HTMLTextAreaElement | null>(null);
   const rulerRef = useRef<HTMLDivElement | null>(null);
   const lastEmittedValue = useRef(value);
@@ -19,7 +21,7 @@ export function VerticalEditor({ value, onChange, textareaRef, lineCount = 1 }: 
     }
   };
 
-  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (rulerRef.current) {
       rulerRef.current.scrollLeft = e.currentTarget.scrollLeft;
     }
@@ -40,19 +42,24 @@ export function VerticalEditor({ value, onChange, textareaRef, lineCount = 1 }: 
 
   return (
     <div className="vertical-editor-container">
-      <textarea
-        ref={setRef}
-        className="vertical-editor"
-        defaultValue={value}
-        onInput={(e) => {
-          const next = (e.target as HTMLTextAreaElement).value;
-          lastEmittedValue.current = next;
-          onChange(next);
-        }}
-        onScroll={handleScroll}
-        placeholder="ここに脚本本文を入力"
-        aria-label="Vertical screenplay editor"
-      />
+      <div className="vertical-editor-scroll-area" onScroll={handleScroll}>
+        <textarea
+          ref={setRef}
+          className="vertical-editor"
+          style={{
+            width: `max(100%, calc(${lineCount} * 2rem + var(--space-lg) * 2))`,
+            height: `calc(${charsPerColumn}em + var(--space-lg) * 2)`
+          }}
+          defaultValue={value}
+          onInput={(e) => {
+            const next = (e.target as HTMLTextAreaElement).value;
+            lastEmittedValue.current = next;
+            onChange(next);
+          }}
+          placeholder={placeholder || 'ここに脚本本文を入力'}
+          aria-label="Vertical screenplay editor"
+        />
+      </div>
       <div className="vertical-editor-ruler" ref={rulerRef} aria-hidden="true">
         {numbers.map((n) => (
           <span key={n}>{n}</span>

@@ -1,6 +1,10 @@
 import type { ReactElement } from 'react';
 
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Layout } from '../components/ui/Layout';
+import { useAuth } from '../contexts/AuthContext';
+import { getScript, updateScript } from '../lib/firebase/firestoreService';
 import { AdvicePanel } from '../components/advice/AdvicePanel';
 import { DiffView } from '../components/advice/DiffView';
 import { PartialAdvice } from '../components/advice/PartialAdvice';
@@ -38,9 +42,13 @@ import {
 } from '../stores/adviceStore';
 import {
   createInitialEditorState,
+  DEFAULT_SETTINGS,
+  DEFAULT_SYNOPSIS_SETTINGS,
   recalculateGuideMetrics,
   updateContent,
   updateSettings,
+  updateSynopsis,
+  updateSynopsisSettings,
 } from '../stores/editorStore';
 
 interface AdviceResult {
@@ -64,16 +72,20 @@ const defaultAdviceModels: AdviceModelDescriptor[] = [
 ];
 
 function toEditorState(document: ScriptDocument) {
+  const content = document.content || '';
+  const synopsis = document.synopsis || '';
+  const settings = document.settings || DEFAULT_SETTINGS;
+  const synopsisSettings = document.settings || DEFAULT_SYNOPSIS_SETTINGS; // Map legacy document settings to synopsis settings temporarily for old loads
+
   return {
-    title: document.title,
-    authorName: document.authorName,
-    synopsis: document.synopsis,
-    content: document.content,
-    settings: document.settings,
-    metrics: recalculateGuideMetrics({
-      content: document.content,
-      settings: document.settings,
-    }),
+    title: document.title || '',
+    authorName: document.authorName || '',
+    synopsis: synopsis,
+    content: content,
+    settings: settings,
+    metrics: recalculateGuideMetrics(content, settings),
+    synopsisSettings: synopsisSettings,
+    synopsisMetrics: recalculateGuideMetrics(synopsis, synopsisSettings),
   };
 }
 
@@ -99,6 +111,9 @@ function toCharacterRows(document: ScriptDocument): CharacterRow[] {
 }
 
 export function EditorPage(): ReactElement {
+  const { scriptId: routeScriptId } = useParams<{ scriptId: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [state, setState] = useState(createInitialEditorState);
   const [adviceState, setAdviceState] = useState(createAdviceState);
   const [characters, setCharacters] = useState<CharacterRow[]>([]);
@@ -120,10 +135,70 @@ export function EditorPage(): ReactElement {
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [documentMessage, setDocumentMessage] = useState('');
   const [documentPending, setDocumentPending] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const activeDocumentId = documentId || localDocumentId;
+
+  // Load script from Firestore if a route param is provided
+  useEffect(() => {
+    if (!routeScriptId) return;
+    void (async () => {
+      try {
+        const script = await getScript(routeScriptId);
+        if (script) {
+          const settings = script.settings || DEFAULT_SETTINGS;
+          setState({
+            title: script.title || '',
+            authorName: script.authorName || '',
+            synopsis: script.synopsis || '',
+            content: script.content || '',
+            settings,
+            metrics: recalculateGuideMetrics(script.content || '', settings),
+            synopsisSettings: DEFAULT_SYNOPSIS_SETTINGS,
+            synopsisMetrics: recalculateGuideMetrics(script.synopsis || '', DEFAULT_SYNOPSIS_SETTINGS),
+          });
+          setCharacters(script.characters?.map((c) => {
+            const row: CharacterRow = { id: c.id, name: c.name };
+            if (c.age) row.age = c.age;
+            if (c.traits) row.traits = c.traits;
+            if (c.background) row.background = c.background;
+            return row;
+          }) || []);
+        }
+      } catch (error) {
+        console.error('Failed to load script from Firestore:', error);
+      }
+    })();
+  }, [routeScriptId]);
+
+  // Save to Firestore
+  const saveToFirestore = useCallback(async () => {
+    if (!routeScriptId) return;
+    setSaveMessage('保存中...');
+    try {
+      await updateScript(routeScriptId, {
+        title: state.title,
+        authorName: state.authorName,
+        synopsis: state.synopsis,
+        content: state.content,
+        characters: characters.map((c) => {
+          const entry: { id: string; name: string; age?: string; traits?: string; background?: string } = { id: c.id, name: c.name };
+          if (c.age) entry.age = c.age;
+          if (c.traits) entry.traits = c.traits;
+          if (c.background) entry.background = c.background;
+          return entry;
+        }),
+        settings: state.settings,
+      });
+      setSaveMessage('保存しました ✓');
+      setTimeout(() => setSaveMessage(''), 2000);
+    } catch (error) {
+      console.error('Failed to save to Firestore:', error);
+      setSaveMessage('保存に失敗しました');
+    }
+  }, [routeScriptId, state, characters]);
 
   const applyLoadedDocument = (document: ScriptDocument): void => {
     setDocumentId(document.id);
@@ -203,9 +278,17 @@ export function EditorPage(): ReactElement {
     }
   };
 
+  const contentLength = useMemo(() => state.content.replace(/[\r\n]/g, '').length, [state.content]);
+
   const remaining = useMemo(() => {
-    return Math.max(state.metrics.totalCapacity - state.content.length, 0);
-  }, [state]);
+    return Math.max(state.metrics.totalCapacity - contentLength, 0);
+  }, [state.metrics.totalCapacity, contentLength]);
+
+  const synopsisContentLength = useMemo(() => state.synopsis.replace(/[\r\n]/g, '').length, [state.synopsis]);
+
+  const synopsisRemaining = useMemo(() => {
+    return Math.max(state.synopsisMetrics.totalCapacity - synopsisContentLength, 0);
+  }, [state.synopsisMetrics.totalCapacity, synopsisContentLength]);
 
   const regenerateAdvice = async (selectedText?: string): Promise<void> => {
     const providerEnabled = (provider: AdviceProvider): boolean =>
@@ -347,170 +430,193 @@ export function EditorPage(): ReactElement {
         authorName: state.authorName || 'unknown-author',
         content: state.content,
       });
-      setExportMessage(`Export ready: ${payload.fileName} (${payload.content.length} chars)`);
+      setExportMessage(`Export ready: ${payload.fileName} (${payload.content.replace(/[\r\n]/g, '').length} chars)`);
     } catch (error) {
       setExportMessage(error instanceof Error ? error.message : String(error));
     }
   };
 
   return (
-    <main className="main-container">
-      <h1>Scenario Writing Lab</h1>
-
-      <section aria-label="Document controls" className="section-container">
-        <h3>ドキュメント管理</h3>
-        <div className="flex-col">
-          <label>
-            タイトル
-            <input
-              value={state.title}
-              onChange={(event) => {
-                const val = event.currentTarget.value;
-                setState((current) => ({ ...current, title: val }));
-              }}
-              placeholder="脚本タイトル"
-            />
-          </label>
-          <label>
-            著者
-            <input
-              value={state.authorName}
-              onChange={(event) => {
-                const val = event.currentTarget.value;
-                setState((current) => ({ ...current, authorName: val }));
-              }}
-              placeholder="著者名"
-            />
-          </label>
-          <label>
-            あらすじ
-            <textarea
-              value={state.synopsis}
-              onChange={(event) => {
-                const val = event.currentTarget.value;
-                setState((current) => ({ ...current, synopsis: val }));
-              }}
-              placeholder="あらすじ"
-            />
-          </label>
+    <Layout>
+      <main className="main-container">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h1 style={{ margin: 0 }}>脚本エディタ</h1>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {saveMessage && <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{saveMessage}</span>}
+            {routeScriptId && (
+              <button type="button" onClick={() => void saveToFirestore()} style={{ fontWeight: 600 }}>
+                クラウドに保存
+              </button>
+            )}
+            <button type="button" onClick={() => navigate('/catalog')} style={{ backgroundColor: 'transparent', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+              一覧に戻る
+            </button>
+          </div>
         </div>
-        <div className="document-actions">
-          <button type="button" onClick={() => void onCreateDocument()} disabled={documentPending}>
-            新規作成
-          </button>
-          <button type="button" onClick={() => void onSaveDocument()} disabled={documentPending}>
-            保存
-          </button>
-          <select
-            value={selectedDocumentId}
-            onChange={(event) => setSelectedDocumentId(event.currentTarget.value)}
-            aria-label="Saved documents"
-          >
-            <option value="">保存済みを選択</option>
-            {documents.map((document) => (
-              <option key={document.id} value={document.id}>
-                {document.title || '(untitled)'} / {document.id}
-              </option>
-            ))}
-          </select>
-          <button type="button" onClick={() => void onLoadDocument()} disabled={documentPending}>
-            読み込み
-          </button>
-          <button type="button" onClick={() => fileInputRef.current?.click()}>
-            Word読み込み
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".docx"
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              const file = e.currentTarget.files?.[0];
-              if (file) void onImportDocx(file);
-              e.currentTarget.value = '';
-            }}
+
+        <section aria-label="Document controls" className="section-container">
+          <h3>ドキュメント管理</h3>
+          <div className="flex-col">
+            <label>
+              タイトル
+              <input
+                value={state.title}
+                onChange={(event) => {
+                  const val = event.currentTarget.value;
+                  setState((current) => ({ ...current, title: val }));
+                }}
+                placeholder="脚本タイトル"
+              />
+            </label>
+            <label>
+              著者
+              <input
+                value={state.authorName}
+                onChange={(event) => {
+                  const val = event.currentTarget.value;
+                  setState((current) => ({ ...current, authorName: val }));
+                }}
+                placeholder="著者名"
+              />
+            </label>
+            <label>
+              あらすじ
+              <VerticalEditor
+                value={state.synopsis}
+                onChange={(value) => setState((current) => updateSynopsis(current, value))}
+                lineCount={Math.max(5, state.synopsisMetrics.currentLines, state.synopsisSettings.pageCount * 20)}
+                charsPerColumn={state.synopsisSettings.lineLength}
+                placeholder="あらすじを入力..."
+              />
+            </label>
+            <Settings
+              value={state.synopsisSettings}
+              onChange={(value) => setState((current) => updateSynopsisSettings(current, value))}
+            />
+            <p className="status-text" style={{ marginTop: 'var(--space-sm)' }}>
+              文字数: {synopsisContentLength} / 行数: {state.synopsisMetrics.currentLines} / 目安容量: {state.synopsisMetrics.totalCapacity}字 ({state.synopsisSettings.pageCount}枚) / 残り: {synopsisRemaining}字
+            </p>
+          </div>
+          <div className="document-actions">
+            <button type="button" onClick={() => void onCreateDocument()} disabled={documentPending}>
+              新規作成
+            </button>
+            <button type="button" onClick={() => void onSaveDocument()} disabled={documentPending}>
+              保存
+            </button>
+            <select
+              value={selectedDocumentId}
+              onChange={(event) => setSelectedDocumentId(event.currentTarget.value)}
+              aria-label="Saved documents"
+            >
+              <option value="">保存済みを選択</option>
+              {documents.map((document) => (
+                <option key={document.id} value={document.id}>
+                  {document.title || '(untitled)'} / {document.id}
+                </option>
+              ))}
+            </select>
+            <button type="button" onClick={() => void onLoadDocument()} disabled={documentPending}>
+              読み込み
+            </button>
+            <button type="button" onClick={() => fileInputRef.current?.click()}>
+              Word読み込み
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".docx"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.currentTarget.files?.[0];
+                if (file) void onImportDocx(file);
+                e.currentTarget.value = '';
+              }}
+            />
+          </div>
+          <p className="status-text">現在のドキュメントID: {documentId || '(未保存)'}</p>
+          {documentMessage ? <p className="status-text">{documentMessage}</p> : null}
+        </section>
+
+        <ScriptToolbar onApply={onToolbarApply} />
+
+        <Settings
+          value={state.settings}
+          onChange={(value) => setState((current) => updateSettings(current, value))}
+        />
+
+        <VerticalEditor
+          value={state.content}
+          onChange={(value) => setState((current) => updateContent(current, value))}
+          textareaRef={textareaRef}
+          lineCount={Math.max(state.metrics.currentLines, state.settings.pageCount * 20)}
+          charsPerColumn={state.settings.lineLength}
+          placeholder="ここに脚本本文を入力..."
+        />
+
+        <p>
+          文字数: {contentLength} / 行数: {state.metrics.currentLines} / 目安容量: {state.metrics.totalCapacity}字 ({state.settings.pageCount}枚) / 残り: {remaining}字
+        </p>
+
+        <CharacterTable value={characters} onChange={setCharacters} />
+
+        <button type="button" className="btn-primary" onClick={() => void regenerateAdvice()}>
+          全体アドバイス更新
+        </button>
+        {adviceMessage ? <p>{adviceMessage}</p> : null}
+
+        <div className="grid-2col">
+          <AdvicePanel
+            title="Advice A"
+            provider={adviceState.panelA.provider}
+            models={adviceModels}
+            preset={adviceState.panelA.preset}
+            structureFeedback={panelAAdvice.structureFeedback}
+            emotionalFeedback={panelAAdvice.emotionalFeedback}
+            onProviderChange={(provider) =>
+              setAdviceState((current) => selectPanelModel(current, 'A', provider))
+            }
+            onPresetChange={(preset) =>
+              setAdviceState((current) => setPanelPreset(current, 'A', preset))
+            }
+          />
+
+          <AdvicePanel
+            title="Advice B"
+            provider={adviceState.panelB.provider}
+            models={adviceModels}
+            preset={adviceState.panelB.preset}
+            structureFeedback={panelBAdvice.structureFeedback}
+            emotionalFeedback={panelBAdvice.emotionalFeedback}
+            onProviderChange={(provider) =>
+              setAdviceState((current) => selectPanelModel(current, 'B', provider))
+            }
+            onPresetChange={(preset) =>
+              setAdviceState((current) => setPanelPreset(current, 'B', preset))
+            }
           />
         </div>
-        <p className="status-text">現在のドキュメントID: {documentId || '(未保存)'}</p>
-        {documentMessage ? <p className="status-text">{documentMessage}</p> : null}
-      </section>
 
-      <ScriptToolbar onApply={onToolbarApply} />
+        <PartialAdvice onRequest={onRequestPartialAdvice} />
 
-      <Settings
-        value={state.settings}
-        onChange={(value) => setState((current) => updateSettings(current, value))}
-      />
-
-      <VerticalEditor
-        value={state.content}
-        onChange={(value) => setState((current) => updateContent(current, value))}
-        textareaRef={textareaRef}
-        lineCount={Math.max(state.metrics.currentLines, state.settings.pageCount * 20)}
-      />
-
-      <p>
-        文字数: {state.content.length} / 行数: {state.metrics.currentLines} / 目安容量: {state.metrics.totalCapacity}字 ({state.settings.pageCount}枚) / 残り: {remaining}字
-      </p>
-
-      <CharacterTable value={characters} onChange={setCharacters} />
-
-      <button type="button" className="btn-primary" onClick={() => void regenerateAdvice()}>
-        全体アドバイス更新
-      </button>
-      {adviceMessage ? <p>{adviceMessage}</p> : null}
-
-      <div className="grid-2col">
-        <AdvicePanel
-          title="Advice A"
-          provider={adviceState.panelA.provider}
-          models={adviceModels}
-          preset={adviceState.panelA.preset}
-          structureFeedback={panelAAdvice.structureFeedback}
-          emotionalFeedback={panelAAdvice.emotionalFeedback}
-          onProviderChange={(provider) =>
-            setAdviceState((current) => selectPanelModel(current, 'A', provider))
-          }
-          onPresetChange={(preset) =>
-            setAdviceState((current) => setPanelPreset(current, 'A', preset))
-          }
+        <StructurePanel segments={structureSegments} activeSegmentId={activeSegmentId} />
+        <SectionSelector
+          segments={structureSegments}
+          activeSegmentId={activeSegmentId}
+          onSelect={setActiveSegmentId}
         />
 
-        <AdvicePanel
-          title="Advice B"
-          provider={adviceState.panelB.provider}
-          models={adviceModels}
-          preset={adviceState.panelB.preset}
-          structureFeedback={panelBAdvice.structureFeedback}
-          emotionalFeedback={panelBAdvice.emotionalFeedback}
-          onProviderChange={(provider) =>
-            setAdviceState((current) => selectPanelModel(current, 'B', provider))
-          }
-          onPresetChange={(preset) =>
-            setAdviceState((current) => setPanelPreset(current, 'B', preset))
-          }
-        />
-      </div>
+        <button type="button" onClick={applyAdviceExamplePatch}>
+          修正例を本文に反映
+        </button>
 
-      <PartialAdvice onRequest={onRequestPartialAdvice} />
+        <DiffView before={lastBeforeEdit} after={state.content} />
 
-      <StructurePanel segments={structureSegments} activeSegmentId={activeSegmentId} />
-      <SectionSelector
-        segments={structureSegments}
-        activeSegmentId={activeSegmentId}
-        onSelect={setActiveSegmentId}
-      />
-
-      <button type="button" onClick={applyAdviceExamplePatch}>
-        修正例を本文に反映
-      </button>
-
-      <DiffView before={lastBeforeEdit} after={state.content} />
-
-      <button type="button" onClick={() => void onExport()}>
-        エクスポート
-      </button>
-      {exportMessage ? <p>{exportMessage}</p> : null}
-    </main>
+        <button type="button" onClick={() => void onExport()}>
+          エクスポート
+        </button>
+        {exportMessage ? <p>{exportMessage}</p> : null}
+      </main>
+    </Layout>
   );
 }
