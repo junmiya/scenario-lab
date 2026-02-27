@@ -13,6 +13,7 @@ export function VerticalEditor({ value, onChange, textareaRef, lineCount = 1, ch
   const internalRef = useRef<HTMLTextAreaElement | null>(null);
   const rulerRef = useRef<HTMLDivElement | null>(null);
   const lastEmittedValue = useRef(value);
+  const composingRef = useRef(false);
 
   const setRef = (el: HTMLTextAreaElement | null): void => {
     internalRef.current = el;
@@ -32,11 +33,22 @@ export function VerticalEditor({ value, onChange, textareaRef, lineCount = 1, ch
   useEffect(() => {
     const ta = internalRef.current;
     if (!ta) return;
+    // Never overwrite during IME composition — it resets the candidate window
+    if (composingRef.current) return;
     if (value === lastEmittedValue.current) return;
-    // True external update – apply it.
+    // True external update – apply it, preserving cursor position.
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
     ta.value = value;
+    ta.setSelectionRange(start, end);
     lastEmittedValue.current = value;
   }, [value]);
+
+  const emitChange = (ta: HTMLTextAreaElement) => {
+    const next = ta.value;
+    lastEmittedValue.current = next;
+    onChange(next);
+  };
 
   const numbers = Array.from({ length: Math.max(1, lineCount) }).map((_, i) => i + 1);
 
@@ -51,10 +63,15 @@ export function VerticalEditor({ value, onChange, textareaRef, lineCount = 1, ch
             height: `calc(${charsPerColumn}em + var(--space-lg) * 2)`
           }}
           defaultValue={value}
+          onCompositionStart={() => { composingRef.current = true; }}
+          onCompositionEnd={(e) => {
+            composingRef.current = false;
+            emitChange(e.target as HTMLTextAreaElement);
+          }}
           onInput={(e) => {
-            const next = (e.target as HTMLTextAreaElement).value;
-            lastEmittedValue.current = next;
-            onChange(next);
+            // Skip during IME composition — wait for compositionEnd
+            if (composingRef.current) return;
+            emitChange(e.target as HTMLTextAreaElement);
           }}
           placeholder={placeholder || 'ここに脚本本文を入力'}
           aria-label="Vertical screenplay editor"
