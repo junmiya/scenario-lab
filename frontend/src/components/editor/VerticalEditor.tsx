@@ -1,26 +1,72 @@
-import { useEffect, useRef, type ReactElement } from 'react';
+import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef, type Ref } from 'react';
+
+export interface EditorHandle {
+  element: HTMLDivElement | null;
+  insertText(text: string): void;
+  focus(): void;
+}
 
 interface VerticalEditorProps {
   value: string;
   onChange: (value: string) => void;
-  textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
   lineCount?: number;
   charsPerColumn?: number;
   placeholder?: string;
 }
 
-export function VerticalEditor({ value, onChange, textareaRef, lineCount = 1, charsPerColumn = 20, placeholder }: VerticalEditorProps): ReactElement {
-  const internalRef = useRef<HTMLTextAreaElement | null>(null);
+function getText(el: HTMLDivElement): string {
+  // innerText preserves line breaks from <br> and block elements
+  return el.innerText ?? '';
+}
+
+export const VerticalEditor = forwardRef(function VerticalEditor(
+  { value, onChange, lineCount = 1, charsPerColumn = 20, placeholder }: VerticalEditorProps,
+  ref: Ref<EditorHandle>,
+) {
+  const divRef = useRef<HTMLDivElement | null>(null);
   const rulerRef = useRef<HTMLDivElement | null>(null);
   const lastEmittedValue = useRef(value);
   const composingRef = useRef(false);
+  const initializedRef = useRef(false);
 
-  const setRef = (el: HTMLTextAreaElement | null): void => {
-    internalRef.current = el;
-    if (textareaRef && 'current' in textareaRef) {
-      (textareaRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el;
+  useImperativeHandle(ref, () => ({
+    get element() { return divRef.current; },
+    insertText(text: string) {
+      const el = divRef.current;
+      if (!el) return;
+      el.focus();
+      document.execCommand('insertText', false, text);
+    },
+    focus() { divRef.current?.focus(); },
+  }), []);
+
+  // Set initial content once on mount
+  useEffect(() => {
+    const el = divRef.current;
+    if (!el || initializedRef.current) return;
+    initializedRef.current = true;
+    if (value) {
+      el.innerText = value;
+      lastEmittedValue.current = value;
     }
-  };
+  }, [value]);
+
+  // Sync external value changes (toolbar insert, document load)
+  useEffect(() => {
+    const el = divRef.current;
+    if (!el || !initializedRef.current) return;
+    if (composingRef.current) return;
+    if (value === lastEmittedValue.current) return;
+    // External update — replace content
+    el.innerText = value;
+    lastEmittedValue.current = value;
+  }, [value]);
+
+  const emitChange = useCallback((el: HTMLDivElement) => {
+    const text = getText(el);
+    lastEmittedValue.current = text;
+    onChange(text);
+  }, [onChange]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (rulerRef.current) {
@@ -28,26 +74,10 @@ export function VerticalEditor({ value, onChange, textareaRef, lineCount = 1, ch
     }
   };
 
-  // Sync external value changes (e.g. toolbar insert, document load) without
-  // touching the textarea when the change originated from user typing.
-  useEffect(() => {
-    const ta = internalRef.current;
-    if (!ta) return;
-    // Never overwrite during IME composition — it resets the candidate window
-    if (composingRef.current) return;
-    if (value === lastEmittedValue.current) return;
-    // True external update – apply it, preserving cursor position.
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
-    ta.value = value;
-    ta.setSelectionRange(start, end);
-    lastEmittedValue.current = value;
-  }, [value]);
-
-  const emitChange = (ta: HTMLTextAreaElement) => {
-    const next = ta.value;
-    lastEmittedValue.current = next;
-    onChange(next);
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
   };
 
   const numbers = Array.from({ length: Math.max(1, lineCount) }).map((_, i) => i + 1);
@@ -55,33 +85,36 @@ export function VerticalEditor({ value, onChange, textareaRef, lineCount = 1, ch
   return (
     <div className="vertical-editor-container">
       <div className="vertical-editor-scroll-area" onScroll={handleScroll}>
-        <textarea
-          ref={setRef}
+        <div
+          ref={divRef}
           className="vertical-editor"
+          contentEditable
+          role="textbox"
+          aria-multiline="true"
+          aria-label="Vertical screenplay editor"
+          data-placeholder={placeholder || 'ここに脚本本文を入力'}
           style={{
-            width: `max(100%, calc(${lineCount} * 2rem + var(--space-lg) * 2))`,
-            height: `calc(${charsPerColumn}em + var(--space-lg) * 2)`
+            width: `max(100%, calc(${lineCount} * var(--editor-column-width) + var(--space-lg) * 2))`,
+            height: `calc(${charsPerColumn}em + var(--space-lg) * 2)`,
           }}
-          defaultValue={value}
           onCompositionStart={() => { composingRef.current = true; }}
           onCompositionEnd={(e) => {
             composingRef.current = false;
-            emitChange(e.target as HTMLTextAreaElement);
+            emitChange(e.currentTarget as HTMLDivElement);
           }}
           onInput={(e) => {
-            // Skip during IME composition — wait for compositionEnd
             if (composingRef.current) return;
-            emitChange(e.target as HTMLTextAreaElement);
+            emitChange(e.currentTarget as HTMLDivElement);
           }}
-          placeholder={placeholder || 'ここに脚本本文を入力'}
-          aria-label="Vertical screenplay editor"
+          onPaste={handlePaste}
+          suppressContentEditableWarning
         />
       </div>
       <div className="vertical-editor-ruler" ref={rulerRef} aria-hidden="true">
         {numbers.map((n) => (
-          <span key={n}>{n}</span>
+          <span key={n} className={n % 2 === 0 ? 'ruler-even' : 'ruler-odd'}>{n}</span>
         ))}
       </div>
     </div>
   );
-}
+});

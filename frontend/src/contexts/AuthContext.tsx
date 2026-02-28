@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth';
-import { subscribeToAuthChanges, signOut as firebaseSignOut } from '../lib/firebase/authService';
+import { subscribeToAuthChanges, signOut as firebaseSignOut, handleRedirectResult } from '../lib/firebase/authService';
+import { authReady } from '../lib/firebase/config';
 
 interface AuthContextType {
     user: FirebaseUser | null;
@@ -15,12 +16,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = subscribeToAuthChanges((firebaseUser) => {
-            setUser(firebaseUser);
-            setLoading(false);
-        });
+        let unsubscribe: (() => void) | undefined;
 
-        return () => unsubscribe();
+        // Wait for persistence to be ready (Safari IndexedDB workaround), then subscribe
+        // Handle redirect result in parallel (don't block auth listener)
+        void handleRedirectResult();
+
+        void authReady
+            .then(() => {
+                unsubscribe = subscribeToAuthChanges((firebaseUser) => {
+                    setUser(firebaseUser);
+                    setLoading(false);
+                });
+            })
+            .catch(() => {
+                // Persistence failed entirely — still allow login flow
+                setLoading(false);
+            });
+
+        // Safety timeout: if auth never resolves within 5s, unblock the UI
+        const timer = setTimeout(() => setLoading(false), 5000);
+
+        return () => {
+            clearTimeout(timer);
+            unsubscribe?.();
+        };
     }, []);
 
     const logout = async () => {

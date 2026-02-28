@@ -1,5 +1,6 @@
 import {
-    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
     GoogleAuthProvider,
     signOut as firebaseSignOut,
     onAuthStateChanged,
@@ -44,17 +45,20 @@ const syncUserWithFirestore = async (user: FirebaseUser) => {
     }
 };
 
-export const signInWithGoogle = async () => {
+// Process redirect result on page load
+export const handleRedirectResult = async () => {
     try {
-        const result = await signInWithPopup(auth, googleProvider);
+        const result = await getRedirectResult(auth);
         if (result?.user) {
             await syncUserWithFirestore(result.user);
         }
-        return result;
     } catch (error) {
-        console.error('Error signing in with Google:', error);
-        throw error;
+        console.error('Redirect result error:', error);
     }
+};
+
+export const signInWithGoogle = async () => {
+    await signInWithRedirect(auth, googleProvider);
 };
 
 export const signOut = async () => {

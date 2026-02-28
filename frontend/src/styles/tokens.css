@@ -75,5 +75,6 @@
 
   /* Vertical editor */
   --editor-min-height: 420px;
-  --editor-line-height: 2.0;
+  --editor-line-height: 1.6;
+  --editor-column-width: 1.6rem;
 }

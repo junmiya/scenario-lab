@@ -93,7 +93,6 @@
   /* Force native scrollbar constantly */
   overflow-y: hidden;
   writing-mode: vertical-rl;
-  border-bottom: 1px solid var(--color-border-light);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   background: transparent;
 }
@@ -132,22 +131,32 @@
   writing-mode: vertical-rl;
   text-orientation: upright;
   overflow-x: hidden;
-  /* Prevent textarea from generating its own scrollbar */
   overflow-y: hidden;
   line-height: var(--editor-line-height);
-  padding: var(--space-lg) var(--space-lg) var(--space-lg) var(--space-lg);
+  padding: var(--space-lg);
   border: none;
   font-family: var(--font-editor);
   font-size: var(--text-base);
   letter-spacing: 0;
   outline: none;
-  resize: none;
-  background: transparent;
+  background-image: repeating-linear-gradient(
+    to left,
+    transparent 0,
+    transparent 1lh,
+    #fbfcff 1lh,
+    #fbfcff 2lh
+  );
+  background-origin: content-box;
   box-sizing: border-box;
-  appearance: none;
-  -webkit-appearance: none;
   white-space: pre-wrap;
   word-break: break-all;
+  cursor: text;
+}
+
+.vertical-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-text-tertiary);
+  pointer-events: none;
 }
 
 
@@ -156,28 +165,33 @@
   writing-mode: vertical-rl;
   text-orientation: upright;
   overflow: hidden;
-  /* Hide scrollbar completely */
   width: 100%;
   height: 28px;
-  /* Match the horizontal padding of the textarea exactly */
   padding: 4px var(--space-lg);
-  font-family: var(--font-editor);
-  /* Use the exact same font size and line height so columns align perfectly */
+  font-family: var(--font-base);
   font-size: var(--text-base);
   line-height: var(--editor-line-height);
   color: var(--color-text-tertiary);
   box-sizing: border-box;
   user-select: none;
+  background-image: repeating-linear-gradient(
+    to left,
+    transparent 0,
+    transparent 1lh,
+    #fbfcff 1lh,
+    #fbfcff 2lh
+  );
+  background-origin: content-box;
 }
 
 .vertical-editor-ruler span {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   height: 100%;
-  width: 2rem;
-  /* Reset writing mode and rotation for numbers */
+  width: 1lh;
   writing-mode: horizontal-tb;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
 }
 

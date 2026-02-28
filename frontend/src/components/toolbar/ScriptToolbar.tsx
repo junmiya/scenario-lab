@@ -1,9 +1,10 @@
 import type { ReactElement } from 'react';
+import type { EditorHandle } from '../editor/VerticalEditor';
 
 export type ToolbarAction = 'scene' | 'dialogue' | 'action';
 
 export const INSERT_TEMPLATES: Record<ToolbarAction, string> = {
-  scene: '○場所（時間）\n',
+  scene: '○',
   dialogue: '「」\n',
   action: '　ト書き\n',
 };
@@ -13,20 +14,12 @@ export function applyToolbarAction(content: string, action: ToolbarAction): stri
 }
 
 export function insertToolbarAction(
-  textarea: HTMLTextAreaElement,
-  content: string,
+  handle: EditorHandle,
   action: ToolbarAction,
-): string {
+): void {
   const template = INSERT_TEMPLATES[action];
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const newContent = content.substring(0, start) + template + content.substring(end);
-  const newPos = start + template.length;
-  requestAnimationFrame(() => {
-    textarea.focus();
-    textarea.setSelectionRange(newPos, newPos);
-  });
-  return newContent;
+  handle.focus();
+  handle.insertText(template);
 }
 
 interface ScriptToolbarProps {

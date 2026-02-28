@@ -8,10 +8,11 @@ import { getScript, updateScript } from '../lib/firebase/firestoreService';
 import { AdvicePanel } from '../components/advice/AdvicePanel';
 import { DiffView } from '../components/advice/DiffView';
 import { PartialAdvice } from '../components/advice/PartialAdvice';
+import { ContentCommentary } from '../components/advice/ContentCommentary';
 import { SynopsisCommentary } from '../components/advice/SynopsisCommentary';
 import { CharacterTable, type CharacterRow } from '../components/editor/CharacterTable';
 import { Settings } from '../components/editor/Settings';
-import { VerticalEditor } from '../components/editor/VerticalEditor';
+import { VerticalEditor, type EditorHandle } from '../components/editor/VerticalEditor';
 import { SectionSelector } from '../components/structure/SectionSelector';
 import { StructurePanel, type StructureSegment } from '../components/structure/StructurePanel';
 import {
@@ -85,7 +86,7 @@ export function EditorPage(): ReactElement {
   const [exportMessage, setExportMessage] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [saveMessage, setSaveMessage] = useState('');
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const editorRef = useRef<EditorHandle | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Load script from Firestore if a route param is provided
@@ -188,9 +189,9 @@ export function EditorPage(): ReactElement {
   }, []);
 
   const onToolbarApply = (action: ToolbarAction): void => {
-    if (textareaRef.current) {
-      const newContent = insertToolbarAction(textareaRef.current, state.content, action);
-      setState((current) => updateContent(current, newContent));
+    if (editorRef.current) {
+      insertToolbarAction(editorRef.current, action);
+      // The contenteditable div fires onInput after insertText, which triggers onChange → state update
     } else {
       setState((current) => updateContent(current, applyToolbarAction(current.content, action)));
     }
@@ -326,6 +327,9 @@ export function EditorPage(): ReactElement {
         {/* ── あらすじ ── */}
         <section className="section-container" aria-label="あらすじ">
           <h3>あらすじ</h3>
+          {/* 上段: AI修正提案 */}
+          <SynopsisCommentary synopsis={state.synopsis} scriptId={routeScriptId} charsPerColumn={state.synopsisSettings.lineLength} />
+          {/* 下段: エディタ */}
           <Settings
             value={state.synopsisSettings}
             onChange={(value) => setState((current) => updateSynopsisSettings(current, value))}
@@ -340,23 +344,22 @@ export function EditorPage(): ReactElement {
           <p className="status-text" style={{ marginTop: 'var(--space-sm)' }}>
             文字数: {synopsisContentLength} / 行数: {state.synopsisMetrics.currentLines} / 目安容量: {state.synopsisMetrics.totalCapacity}字 ({state.synopsisSettings.pageCount}枚) / 残り: {synopsisRemaining}字
           </p>
-          <SynopsisCommentary synopsis={state.synopsis} />
         </section>
 
         {/* ── 本文 ── */}
         <section className="section-container" aria-label="本文">
           <h3>本文</h3>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
-            <ScriptToolbar onApply={onToolbarApply} />
             <Settings
               value={state.settings}
               onChange={(value) => setState((current) => updateSettings(current, value))}
             />
+            <ScriptToolbar onApply={onToolbarApply} />
           </div>
           <VerticalEditor
+            ref={editorRef}
             value={state.content}
             onChange={(value) => setState((current) => updateContent(current, value))}
-            textareaRef={textareaRef}
             lineCount={Math.max(state.metrics.currentLines, state.settings.pageCount * 20)}
             charsPerColumn={state.settings.lineLength}
             placeholder="ここに脚本本文を入力..."
@@ -364,6 +367,7 @@ export function EditorPage(): ReactElement {
           <p className="status-text" style={{ marginTop: 'var(--space-sm)' }}>
             文字数: {contentLength} / 行数: {state.metrics.currentLines} / 目安容量: {state.metrics.totalCapacity}字 ({state.settings.pageCount}枚) / 残り: {remaining}字
           </p>
+          <ContentCommentary content={state.content} scriptId={routeScriptId} />
         </section>
 
         {/* ── 登場人物 ── */}
