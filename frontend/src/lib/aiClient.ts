@@ -48,5 +48,5 @@ async function callClaude(systemPrompt: string, userText: string): Promise<strin
     });
 
     const block = message.content[0];
-    return block.type === 'text' ? block.text : '';
+    return block?.type === 'text' ? block.text : '';
 }

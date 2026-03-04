@@ -97,6 +97,7 @@ export function EditorPage(): ReactElement {
         const script = await getScript(routeScriptId);
         if (script) {
           const settings = script.settings || DEFAULT_SETTINGS;
+          const synSettings = script.synopsisSettings || DEFAULT_SYNOPSIS_SETTINGS;
           setState({
             title: script.title || '',
             authorName: script.authorName || '',
@@ -104,8 +105,8 @@ export function EditorPage(): ReactElement {
             content: script.content || '',
             settings,
             metrics: recalculateGuideMetrics(script.content || '', settings),
-            synopsisSettings: DEFAULT_SYNOPSIS_SETTINGS,
-            synopsisMetrics: recalculateGuideMetrics(script.synopsis || '', DEFAULT_SYNOPSIS_SETTINGS),
+            synopsisSettings: synSettings,
+            synopsisMetrics: recalculateGuideMetrics(script.synopsis || '', synSettings),
           });
           setCharacters(script.characters?.map((c) => {
             const row: CharacterRow = { id: c.id, name: c.name };
@@ -139,6 +140,7 @@ export function EditorPage(): ReactElement {
           return entry;
         }),
         settings: state.settings,
+        synopsisSettings: state.synopsisSettings,
       });
       setSaveMessage('保存しました');
       setTimeout(() => setSaveMessage(''), 2000);
@@ -327,47 +329,47 @@ export function EditorPage(): ReactElement {
         {/* ── あらすじ ── */}
         <section className="section-container" aria-label="あらすじ">
           <h3>あらすじ</h3>
-          {/* 上段: AI修正提案 */}
-          <SynopsisCommentary synopsis={state.synopsis} scriptId={routeScriptId} charsPerColumn={state.synopsisSettings.lineLength} />
-          {/* 下段: エディタ */}
-          <Settings
-            value={state.synopsisSettings}
-            onChange={(value) => setState((current) => updateSynopsisSettings(current, value))}
-          />
-          <VerticalEditor
-            value={state.synopsis}
-            onChange={(value) => setState((current) => updateSynopsis(current, value))}
-            lineCount={Math.max(5, state.synopsisMetrics.currentLines, state.synopsisSettings.pageCount * 20)}
-            charsPerColumn={state.synopsisSettings.lineLength}
-            placeholder="あらすじを入力..."
-          />
-          <p className="status-text" style={{ marginTop: 'var(--space-sm)' }}>
-            文字数: {synopsisContentLength} / 行数: {state.synopsisMetrics.currentLines} / 目安容量: {state.synopsisMetrics.totalCapacity}字 ({state.synopsisSettings.pageCount}枚) / 残り: {synopsisRemaining}字
-          </p>
+          <SynopsisCommentary synopsis={state.synopsis} scriptId={routeScriptId ?? ''} charsPerColumn={state.synopsisSettings.lineLength} pageCount={state.synopsisSettings.pageCount}>
+            <Settings
+              value={state.synopsisSettings}
+              onChange={(value) => setState((current) => updateSynopsisSettings(current, value))}
+            />
+            <VerticalEditor
+              value={state.synopsis}
+              onChange={(value) => setState((current) => updateSynopsis(current, value))}
+              lineCount={Math.max(5, state.synopsisMetrics.currentLines, state.synopsisSettings.pageCount * 20)}
+              charsPerColumn={state.synopsisSettings.lineLength}
+              placeholder="あらすじを入力..."
+            />
+            <p className="status-text" style={{ marginTop: 'var(--space-sm)' }}>
+              文字数: {synopsisContentLength} / 行数: {state.synopsisMetrics.currentLines} / 目安容量: {state.synopsisMetrics.totalCapacity}字 ({state.synopsisSettings.pageCount}枚) / 残り: {synopsisRemaining}字
+            </p>
+          </SynopsisCommentary>
         </section>
 
         {/* ── 本文 ── */}
         <section className="section-container" aria-label="本文">
           <h3>本文</h3>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
-            <Settings
-              value={state.settings}
-              onChange={(value) => setState((current) => updateSettings(current, value))}
+          <ContentCommentary content={state.content} scriptId={routeScriptId ?? ''} charsPerColumn={state.settings.lineLength} pageCount={state.settings.pageCount}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
+              <Settings
+                value={state.settings}
+                onChange={(value) => setState((current) => updateSettings(current, value))}
+              />
+              <ScriptToolbar onApply={onToolbarApply} />
+            </div>
+            <VerticalEditor
+              ref={editorRef}
+              value={state.content}
+              onChange={(value) => setState((current) => updateContent(current, value))}
+              lineCount={Math.max(state.metrics.currentLines, state.settings.pageCount * 20)}
+              charsPerColumn={state.settings.lineLength}
+              placeholder="ここに脚本本文を入力..."
             />
-            <ScriptToolbar onApply={onToolbarApply} />
-          </div>
-          <VerticalEditor
-            ref={editorRef}
-            value={state.content}
-            onChange={(value) => setState((current) => updateContent(current, value))}
-            lineCount={Math.max(state.metrics.currentLines, state.settings.pageCount * 20)}
-            charsPerColumn={state.settings.lineLength}
-            placeholder="ここに脚本本文を入力..."
-          />
-          <p className="status-text" style={{ marginTop: 'var(--space-sm)' }}>
-            文字数: {contentLength} / 行数: {state.metrics.currentLines} / 目安容量: {state.metrics.totalCapacity}字 ({state.settings.pageCount}枚) / 残り: {remaining}字
-          </p>
-          <ContentCommentary content={state.content} scriptId={routeScriptId} />
+            <p className="status-text" style={{ marginTop: 'var(--space-sm)' }}>
+              文字数: {contentLength} / 行数: {state.metrics.currentLines} / 目安容量: {state.metrics.totalCapacity}字 ({state.settings.pageCount}枚) / 残り: {remaining}字
+            </p>
+          </ContentCommentary>
         </section>
 
         {/* ── 登場人物 ── */}

@@ -1,4 +1,6 @@
-import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef, type Ref } from 'react';
+import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef, type Ref, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+
+const isSafari = typeof navigator !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
 export interface EditorHandle {
   element: HTMLDivElement | null;
@@ -80,6 +82,37 @@ export const VerticalEditor = forwardRef(function VerticalEditor(
     document.execCommand('insertText', false, text);
   };
 
+  // Safari swaps arrow key directions in vertical-rl contenteditable.
+  // Intercept and use Selection.modify() with correct logical directions.
+  const handleKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (!isSafari) return;
+    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    if (e.metaKey || e.ctrlKey) return;
+
+    const sel = window.getSelection();
+    if (!sel) return;
+
+    const alter = e.shiftKey ? 'extend' : 'move';
+    const granularity = e.altKey ? 'word' : 'character';
+
+    e.preventDefault();
+
+    switch (e.key) {
+      case 'ArrowUp':
+        sel.modify(alter, 'backward', granularity);
+        break;
+      case 'ArrowDown':
+        sel.modify(alter, 'forward', granularity);
+        break;
+      case 'ArrowLeft':
+        sel.modify(alter, 'forward', 'line');
+        break;
+      case 'ArrowRight':
+        sel.modify(alter, 'backward', 'line');
+        break;
+    }
+  };
+
   const numbers = Array.from({ length: Math.max(1, lineCount) }).map((_, i) => i + 1);
 
   return (
@@ -106,6 +139,7 @@ export const VerticalEditor = forwardRef(function VerticalEditor(
             if (composingRef.current) return;
             emitChange(e.currentTarget as HTMLDivElement);
           }}
+          onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           suppressContentEditableWarning
         />

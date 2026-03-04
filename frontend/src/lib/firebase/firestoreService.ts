@@ -31,6 +31,10 @@ export interface FirestoreScript {
         lineLength: number;
         pageCount: number;
     };
+    synopsisSettings?: {
+        lineLength: number;
+        pageCount: number;
+    };
     createdAt?: any;
     updatedAt?: any;
 }
@@ -93,7 +97,7 @@ export async function getScript(scriptId: string): Promise<FirestoreScript | nul
  */
 export async function updateScript(
     scriptId: string,
-    data: Partial<Pick<FirestoreScript, 'title' | 'authorName' | 'synopsis' | 'content' | 'characters' | 'settings'>>,
+    data: Partial<Pick<FirestoreScript, 'title' | 'authorName' | 'synopsis' | 'content' | 'characters' | 'settings' | 'synopsisSettings'>>,
 ): Promise<void> {
     const docRef = doc(db, 'scripts', scriptId);
     await updateDoc(docRef, {

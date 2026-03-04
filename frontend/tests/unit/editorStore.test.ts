@@ -15,7 +15,7 @@ describe('editorStore', () => {
   it('updates metrics when content changes', () => {
     const initial = createInitialEditorState();
     const next = updateContent(initial, 'a'.repeat(50));
-    const metrics = recalculateGuideMetrics(next);
+    const metrics = recalculateGuideMetrics(next.content, next.settings);
     expect(metrics.filledRatio).toBeGreaterThan(0);
   });
 });

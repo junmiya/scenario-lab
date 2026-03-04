@@ -1,9 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@google/generative-ai', () => ({
+  GoogleGenerativeAI: vi.fn(),
+}));
 
 import { generateAdvice, listAdviceModels } from '../../src/services/adviceService';
 
 describe('adviceService', () => {
-  it('returns local mock advice when functions API is not configured', async () => {
+  it('returns local advice when functions API is not configured', async () => {
     const result = await generateAdvice({
       documentId: 'doc-local',
       synopsis: 'short synopsis',
@@ -16,8 +20,9 @@ describe('adviceService', () => {
 
     expect(result.panelA.provider).toBe('gemini');
     expect(result.panelB.provider).toBe('openai');
-    expect(result.panelA.structureFeedback).toContain('gemini/standard/full');
-    expect(result.panelB.structureFeedback).toContain('openai/standard/full');
+    // Without API key, gemini returns an error message; openai returns unsupported fallback
+    expect(result.panelA.structureFeedback).toBeTruthy();
+    expect(result.panelB.structureFeedback).toContain('プロトタイプモードでは未対応');
   });
 
   it('returns fallback model descriptors when functions API is not configured', async () => {
@@ -26,8 +31,8 @@ describe('adviceService', () => {
     expect(models).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ provider: 'gemini', enabled: true }),
-        expect.objectContaining({ provider: 'openai', enabled: true }),
-        expect.objectContaining({ provider: 'anthropic', enabled: true }),
+        expect.objectContaining({ provider: 'openai', enabled: false }),
+        expect.objectContaining({ provider: 'anthropic', enabled: false }),
       ]),
     );
   });

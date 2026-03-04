@@ -5,8 +5,8 @@ export type ToolbarAction = 'scene' | 'dialogue' | 'action';
 
 export const INSERT_TEMPLATES: Record<ToolbarAction, string> = {
   scene: '○',
-  dialogue: '「」\n',
-  action: '　ト書き\n',
+  dialogue: '「」',
+  action: '\u3000\u3000\u3000',  // 3 full-width spaces
 };
 
 export function applyToolbarAction(content: string, action: ToolbarAction): string {
@@ -20,6 +20,12 @@ export function insertToolbarAction(
   const template = INSERT_TEMPLATES[action];
   handle.focus();
   handle.insertText(template);
+
+  // For dialogue: move cursor to line start so user can type character name before 「」
+  if (action === 'dialogue') {
+    const sel = window.getSelection();
+    if (sel) sel.modify('move', 'backward', 'lineboundary');
+  }
 }
 
 interface ScriptToolbarProps {
