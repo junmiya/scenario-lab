@@ -200,6 +200,10 @@ export function ContentCommentary({ content, scriptId, charsPerColumn = 20, page
     // Bottom role selection
     const [bottomRole, setBottomRole] = useState<BottomRole>('scriptdoctor');
 
+    // Collapse state
+    const [directorCollapsed, setDirectorCollapsed] = useState(false);
+    const [bottomCollapsed, setBottomCollapsed] = useState(false);
+
     const initialValueRef = useRef(content);
     const hasEditedRef = useRef(false);
 
@@ -329,6 +333,7 @@ export function ContentCommentary({ content, scriptId, charsPerColumn = 20, page
         historyLen: number, historyIdx: number, setHistoryIdx: (v: number) => void,
         showDel: boolean, setShowDel: (v: (prev: boolean) => boolean) => void,
         hasTabsAbove = false,
+        collapsed = false, onToggleCollapse?: () => void,
     ) => (
         <div style={{
             display: 'flex',
@@ -337,10 +342,14 @@ export function ContentCommentary({ content, scriptId, charsPerColumn = 20, page
             padding: '0.375rem 0.75rem',
             backgroundColor: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
-            borderBottom: 'none',
-            borderRadius: hasTabsAbove ? '0' : 'var(--radius-lg) var(--radius-lg) 0 0',
-        }}>
+            borderBottom: collapsed ? '1px solid var(--color-border)' : 'none',
+            borderRadius: hasTabsAbove
+                ? (collapsed ? '0 0 var(--radius-lg) var(--radius-lg)' : '0')
+                : (collapsed ? 'var(--radius-lg)' : 'var(--radius-lg) var(--radius-lg) 0 0'),
+            cursor: onToggleCollapse ? 'pointer' : undefined,
+        }} onClick={onToggleCollapse}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                {onToggleCollapse && <span style={{ fontSize: '0.5rem', color: 'var(--text-secondary)', userSelect: 'none' }}>{collapsed ? '▶' : '▼'}</span>}
                 {!hasTabsAbove && icon}
                 {!hasTabsAbove && <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>{label}</span>}
                 {loading && <span style={{ fontSize: '0.6875rem', color: loadingColor }}>生成中...</span>}
@@ -369,7 +378,8 @@ export function ContentCommentary({ content, scriptId, charsPerColumn = 20, page
                     </span>
                 )}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexShrink: 0 }}>
+            {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
                 <span style={{ fontSize: '0.625rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                     <span style={{ color: '#1d4ed8', fontWeight: 600, backgroundColor: '#dbeafe', borderRadius: '2px', padding: '0 2px' }}>追加</span>
                     {' '}
@@ -456,8 +466,10 @@ export function ContentCommentary({ content, scriptId, charsPerColumn = 20, page
                     generateDirector,
                     directorHistory.length, directorIndex, setDirectorIndex,
                     directorShowDel, setDirectorShowDel,
+                    false,
+                    directorCollapsed, () => setDirectorCollapsed((v) => !v),
                 )}
-                {panelBody(directorComment, directorLoading, directorShowDel)}
+                {!directorCollapsed && panelBody(directorComment, directorLoading, directorShowDel)}
             </div>
 
             {/* Editor slot (middle) */}
@@ -505,8 +517,9 @@ export function ContentCommentary({ content, scriptId, charsPerColumn = 20, page
                             sdHistory.length, sdIndex, setSdIndex,
                             sdShowDel, setSdShowDel,
                             true,
+                            bottomCollapsed, () => setBottomCollapsed((v) => !v),
                         )}
-                        {panelBody(sdComment, sdLoading, sdShowDel)}
+                        {!bottomCollapsed && panelBody(sdComment, sdLoading, sdShowDel)}
                     </>
                 ) : (
                     <>
@@ -520,8 +533,9 @@ export function ContentCommentary({ content, scriptId, charsPerColumn = 20, page
                             prHistory.length, prIndex, setPrIndex,
                             prShowDel, setPrShowDel,
                             true,
+                            bottomCollapsed, () => setBottomCollapsed((v) => !v),
                         )}
-                        {panelBody(prComment, prLoading, prShowDel)}
+                        {!bottomCollapsed && panelBody(prComment, prLoading, prShowDel)}
                     </>
                 )}
             </div>

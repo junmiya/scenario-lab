@@ -293,6 +293,10 @@ export function SynopsisCommentary({ synopsis, scriptId, charsPerColumn = 20, pa
     // Market role selection
     const [subRole, setSubRole] = useState<SubRole>('producer');
 
+    // Collapse state
+    const [storyCollapsed, setStoryCollapsed] = useState(false);
+    const [bottomCollapsed, setBottomCollapsed] = useState(false);
+
     const initialValueRef = useRef(synopsis);
     const hasEditedRef = useRef(false);
 
@@ -422,6 +426,7 @@ export function SynopsisCommentary({ synopsis, scriptId, charsPerColumn = 20, pa
         historyLen: number, historyIdx: number, setHistoryIdx: (v: number) => void,
         showDel: boolean, setShowDel: (v: (prev: boolean) => boolean) => void,
         hasTabsAbove = false,
+        collapsed = false, onToggleCollapse?: () => void,
     ) => (
         <div style={{
             display: 'flex',
@@ -430,10 +435,14 @@ export function SynopsisCommentary({ synopsis, scriptId, charsPerColumn = 20, pa
             padding: '0.375rem 0.75rem',
             backgroundColor: 'var(--color-surface)',
             border: '1px solid var(--color-border)',
-            borderBottom: 'none',
-            borderRadius: hasTabsAbove ? '0' : 'var(--radius-lg) var(--radius-lg) 0 0',
-        }}>
+            borderBottom: collapsed ? '1px solid var(--color-border)' : 'none',
+            borderRadius: hasTabsAbove
+                ? (collapsed ? '0 0 var(--radius-lg) var(--radius-lg)' : '0')
+                : (collapsed ? 'var(--radius-lg)' : 'var(--radius-lg) var(--radius-lg) 0 0'),
+            cursor: onToggleCollapse ? 'pointer' : undefined,
+        }} onClick={onToggleCollapse}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                {onToggleCollapse && <span style={{ fontSize: '0.5rem', color: 'var(--text-secondary)', userSelect: 'none' }}>{collapsed ? '▶' : '▼'}</span>}
                 {!hasTabsAbove && icon}
                 {!hasTabsAbove && <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)' }}>{label}</span>}
                 {loading && <span style={{ fontSize: '0.6875rem', color: loadingColor }}>生成中...</span>}
@@ -462,7 +471,8 @@ export function SynopsisCommentary({ synopsis, scriptId, charsPerColumn = 20, pa
                     </span>
                 )}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexShrink: 0 }}>
+            {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
                 <span style={{ fontSize: '0.625rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                     <span style={{ color: '#1d4ed8', fontWeight: 600, backgroundColor: '#dbeafe', borderRadius: '2px', padding: '0 2px' }}>追加</span>
                     {' '}
@@ -549,8 +559,10 @@ export function SynopsisCommentary({ synopsis, scriptId, charsPerColumn = 20, pa
                     generateStory,
                     storyHistory.length, storyIndex, setStoryIndex,
                     storyShowDel, setStoryShowDel,
+                    false,
+                    storyCollapsed, () => setStoryCollapsed((v) => !v),
                 )}
-                {panelBody(storyComment, storyLoading, storyShowDel)}
+                {!storyCollapsed && panelBody(storyComment, storyLoading, storyShowDel)}
             </div>
 
             {/* Editor slot (middle) */}
@@ -598,8 +610,9 @@ export function SynopsisCommentary({ synopsis, scriptId, charsPerColumn = 20, pa
                             producerHistory.length, producerIndex, setProducerIndex,
                             producerShowDel, setProducerShowDel,
                             true,
+                            bottomCollapsed, () => setBottomCollapsed((v) => !v),
                         )}
-                        {panelBody(producerComment, producerLoading, producerShowDel)}
+                        {!bottomCollapsed && panelBody(producerComment, producerLoading, producerShowDel)}
                     </>
                 ) : (
                     <>
@@ -613,8 +626,9 @@ export function SynopsisCommentary({ synopsis, scriptId, charsPerColumn = 20, pa
                             proofreaderHistory.length, proofreaderIndex, setProofreaderIndex,
                             proofreaderShowDel, setProofreaderShowDel,
                             true,
+                            bottomCollapsed, () => setBottomCollapsed((v) => !v),
                         )}
-                        {panelBody(proofreaderComment, proofreaderLoading, proofreaderShowDel)}
+                        {!bottomCollapsed && panelBody(proofreaderComment, proofreaderLoading, proofreaderShowDel)}
                     </>
                 )}
             </div>
