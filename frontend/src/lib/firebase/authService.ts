@@ -1,5 +1,7 @@
 import {
     signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
     GoogleAuthProvider,
     signOut as firebaseSignOut,
     onAuthStateChanged,
@@ -44,13 +46,31 @@ const syncUserWithFirestore = async (user: FirebaseUser) => {
     }
 };
 
-// No-op kept for backward compatibility with AuthContext
-export const handleRedirectResult = async () => {};
+// Process redirect result on page load (for redirect fallback)
+export const handleRedirectResult = async () => {
+    try {
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+            await syncUserWithFirestore(result.user);
+        }
+    } catch (error) {
+        console.error('Redirect result error:', error);
+    }
+};
 
+// Try popup first; fall back to redirect if popup is blocked
 export const signInWithGoogle = async () => {
-    const result = await signInWithPopup(auth, googleProvider);
-    if (result.user) {
-        await syncUserWithFirestore(result.user);
+    try {
+        const result = await signInWithPopup(auth, googleProvider);
+        if (result.user) {
+            await syncUserWithFirestore(result.user);
+        }
+    } catch (error: unknown) {
+        if (error instanceof Error && 'code' in error && (error as any).code === 'auth/popup-blocked') {
+            await signInWithRedirect(auth, googleProvider);
+            return;
+        }
+        throw error;
     }
 };
 
