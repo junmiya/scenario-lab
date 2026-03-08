@@ -69,9 +69,9 @@ export function EditorPage(): ReactElement {
       try {
         const script = await getScript(routeScriptId);
         if (script) {
-          const settings = script.settings || DEFAULT_SETTINGS;
-          const synSettings = script.synopsisSettings || DEFAULT_SYNOPSIS_SETTINGS;
-          const charSettings = script.characterSettings || DEFAULT_CHARACTER_SETTINGS;
+          const settings = { ...DEFAULT_SETTINGS, ...script.settings };
+          const synSettings = { ...DEFAULT_SYNOPSIS_SETTINGS, ...script.synopsisSettings };
+          const charSettings = { ...DEFAULT_CHARACTER_SETTINGS, ...script.characterSettings };
           const characterText = script.characterText || '';
           setState({
             title: script.title || '',
@@ -200,7 +200,7 @@ export function EditorPage(): ReactElement {
         {/* ── 作品情報 ── */}
         <section className="section-container" aria-label="作品情報">
           <h3>作品情報</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr', gap: 'var(--space-md)', alignItems: 'end' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '3fr 3fr 1fr 1fr', gap: 'var(--space-md)', alignItems: 'end' }}>
             <label>
               タイトル
               <input
@@ -224,7 +224,7 @@ export function EditorPage(): ReactElement {
               />
             </label>
             <label>
-              文字数/行
+              字数/行
               <input
                 type="number"
                 min={10}
@@ -245,7 +245,32 @@ export function EditorPage(): ReactElement {
                 }}
               />
             </label>
+            <label>
+              行数/枚
+              <input
+                type="number"
+                min={1}
+                max={40}
+                value={state.settings.linesPerPage}
+                onChange={(event) => {
+                  const linesPerPage = Number(event.currentTarget.value);
+                  setState((current) => {
+                    const s = { ...current };
+                    s.settings = { ...s.settings, linesPerPage };
+                    s.metrics = recalculateGuideMetrics(s.content, s.settings);
+                    s.synopsisSettings = { ...s.synopsisSettings, linesPerPage };
+                    s.synopsisMetrics = recalculateGuideMetrics(s.synopsis, s.synopsisSettings);
+                    s.characterSettings = { ...s.characterSettings, linesPerPage };
+                    s.characterMetrics = recalculateGuideMetrics(s.characterText, s.characterSettings);
+                    return s;
+                  });
+                }}
+              />
+            </label>
           </div>
+          <p style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+            1枚 = {state.settings.lineLength}字 × {state.settings.linesPerPage}行 = {state.settings.lineLength * state.settings.linesPerPage}字
+          </p>
         </section>
 
         {/* ── あらすじ ── */}
@@ -469,6 +494,7 @@ export function EditorPage(): ReactElement {
                 authorName={state.authorName}
                 content={exportPreview}
                 charsPerColumn={state.settings.lineLength}
+                columnsPerPage={state.settings.linesPerPage}
               />
             </div>
           )}

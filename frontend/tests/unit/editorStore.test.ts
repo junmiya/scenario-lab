@@ -8,7 +8,7 @@ import {
 describe('editorStore', () => {
   it('creates initial state with default capacity', () => {
     const state = createInitialEditorState();
-    expect(state.metrics.totalCapacity).toBe(200);
+    expect(state.metrics.totalCapacity).toBe(4000);
     expect(state.metrics.filledRatio).toBe(0);
   });
 

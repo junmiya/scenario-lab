@@ -1,5 +1,6 @@
 export interface EditorSettings {
   lineLength: number;
+  linesPerPage: number;
   pageCount: number;
 }
 
@@ -25,16 +26,19 @@ export interface EditorState {
 
 export const DEFAULT_SETTINGS: EditorSettings = {
   lineLength: 20,
+  linesPerPage: 20,
   pageCount: 10,
 };
 
 export const DEFAULT_SYNOPSIS_SETTINGS: EditorSettings = {
   lineLength: 20,
+  linesPerPage: 20,
   pageCount: 2,
 };
 
 export const DEFAULT_CHARACTER_SETTINGS: EditorSettings = {
   lineLength: 20,
+  linesPerPage: 20,
   pageCount: 2,
 };
 
@@ -42,7 +46,7 @@ export function recalculateGuideMetrics(
   content: string,
   settings: EditorSettings,
 ): GuideMetrics {
-  const totalCapacity = settings.lineLength * settings.pageCount;
+  const totalCapacity = settings.lineLength * settings.linesPerPage * settings.pageCount;
   const contentLength = content.replace(/[\r\n]/g, '').length;
   const filledRatio = totalCapacity > 0 ? Math.min(contentLength / totalCapacity, 1) : 0;
 
@@ -63,6 +67,10 @@ export function recalculateGuideMetrics(
   return { totalCapacity, filledRatio, currentLines };
 }
 
+function calcCapacity(s: EditorSettings): number {
+  return s.lineLength * s.linesPerPage * s.pageCount;
+}
+
 export function createInitialEditorState(): EditorState {
   return {
     title: '',
@@ -72,19 +80,19 @@ export function createInitialEditorState(): EditorState {
     content: '',
     settings: DEFAULT_SETTINGS,
     metrics: {
-      totalCapacity: DEFAULT_SETTINGS.lineLength * DEFAULT_SETTINGS.pageCount,
+      totalCapacity: calcCapacity(DEFAULT_SETTINGS),
       filledRatio: 0,
       currentLines: 0,
     },
     synopsisSettings: DEFAULT_SYNOPSIS_SETTINGS,
     synopsisMetrics: {
-      totalCapacity: DEFAULT_SYNOPSIS_SETTINGS.lineLength * DEFAULT_SYNOPSIS_SETTINGS.pageCount,
+      totalCapacity: calcCapacity(DEFAULT_SYNOPSIS_SETTINGS),
       filledRatio: 0,
       currentLines: 0,
     },
     characterSettings: DEFAULT_CHARACTER_SETTINGS,
     characterMetrics: {
-      totalCapacity: DEFAULT_CHARACTER_SETTINGS.lineLength * DEFAULT_CHARACTER_SETTINGS.pageCount,
+      totalCapacity: calcCapacity(DEFAULT_CHARACTER_SETTINGS),
       filledRatio: 0,
       currentLines: 0,
     },

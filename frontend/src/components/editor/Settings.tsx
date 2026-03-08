@@ -12,21 +12,38 @@ export function Settings({ value, onChange, hideLineLength }: SettingsProps): Re
   return (
     <section aria-label="Editor settings" className="flex-row">
       {!hideLineLength && (
-        <label>
-          文字数/行
-          <input
-            type="number"
-            min={10}
-            max={40}
-            value={value.lineLength}
-            onChange={(event) =>
-              onChange({
-                ...value,
-                lineLength: Number(event.currentTarget.value),
-              })
-            }
-          />
-        </label>
+        <>
+          <label>
+            字数/行
+            <input
+              type="number"
+              min={10}
+              max={40}
+              value={value.lineLength}
+              onChange={(event) =>
+                onChange({
+                  ...value,
+                  lineLength: Number(event.currentTarget.value),
+                })
+              }
+            />
+          </label>
+          <label>
+            行数/枚
+            <input
+              type="number"
+              min={1}
+              max={40}
+              value={value.linesPerPage}
+              onChange={(event) =>
+                onChange({
+                  ...value,
+                  linesPerPage: Number(event.currentTarget.value),
+                })
+              }
+            />
+          </label>
+        </>
       )}
       <label>
         枚数

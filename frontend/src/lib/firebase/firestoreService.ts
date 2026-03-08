@@ -30,14 +30,17 @@ export interface FirestoreScript {
     }>;
     settings: {
         lineLength: number;
+        linesPerPage?: number;
         pageCount: number;
     };
     synopsisSettings?: {
         lineLength: number;
+        linesPerPage?: number;
         pageCount: number;
     };
     characterSettings?: {
         lineLength: number;
+        linesPerPage?: number;
         pageCount: number;
     };
     contentCommentary?: { director: any[]; scriptdoctor: any[]; proofreader: any[] };

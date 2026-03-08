@@ -15,10 +15,10 @@ describe('US1 vertical editor flow', () => {
     const state = createInitialEditorState();
     const metrics = recalculateGuideMetrics(
       'a'.repeat(150),
-      { lineLength: 25, pageCount: 12 },
+      { lineLength: 25, linesPerPage: 20, pageCount: 12 },
     );
 
-    expect(metrics.totalCapacity).toBe(300);
+    expect(metrics.totalCapacity).toBe(6000);
     expect(metrics.filledRatio).toBeGreaterThan(0);
   });
 });
