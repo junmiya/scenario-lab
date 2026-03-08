@@ -91,6 +91,8 @@ interface SynopsisCommentaryProps {
     charsPerColumn?: number;
     pageCount?: number;
     children?: ReactNode;
+    initialCache?: SynopsisCommentaryCache | undefined;
+    onCacheChange?: ((cache: SynopsisCommentaryCache) => void) | undefined;
 }
 
 const DEBOUNCE_MS = 2000; // Wait 2 seconds after typing stops
@@ -212,6 +214,12 @@ interface CommentEntry {
     timestamp: number;
 }
 
+export interface SynopsisCommentaryCache {
+    story: CommentEntry[];
+    producer: CommentEntry[];
+    proofreader: CommentEntry[];
+}
+
 const STORAGE_PREFIX = 'synopsis-commentary-';
 const DEFAULT_MSG = 'あらすじを入力すると、AIが自動でコメントします...';
 
@@ -255,8 +263,8 @@ function saveCached(scriptId: string | undefined, story: CommentEntry[], produce
     localStorage.setItem(`${STORAGE_PREFIX}${scriptId}`, JSON.stringify({ story, producer, proofreader }));
 }
 
-export function SynopsisCommentary({ synopsis, scriptId, charsPerColumn = 20, pageCount = 2, children }: SynopsisCommentaryProps): ReactElement {
-    const cached = useRef(loadCached(scriptId));
+export function SynopsisCommentary({ synopsis, scriptId, charsPerColumn = 20, pageCount = 2, children, initialCache, onCacheChange }: SynopsisCommentaryProps): ReactElement {
+    const cached = useRef(initialCache ?? loadCached(scriptId));
 
     // Story panel state
     const [storyHistory, setStoryHistory] = useState<CommentEntry[]>(cached.current.story);
@@ -306,12 +314,13 @@ export function SynopsisCommentary({ synopsis, scriptId, charsPerColumn = 20, pa
     const producerComment = producerHistory[producerIndex]?.text ?? DEFAULT_MSG;
     const proofreaderComment = proofreaderHistory[proofreaderIndex]?.text ?? DEFAULT_MSG;
 
-    // Persist comments to localStorage
+    // Persist comments to localStorage + notify parent
     useEffect(() => {
         if (storyHistory.length > 0 || producerHistory.length > 0 || proofreaderHistory.length > 0) {
             saveCached(scriptId, storyHistory, producerHistory, proofreaderHistory);
+            onCacheChange?.({ story: storyHistory, producer: producerHistory, proofreader: proofreaderHistory });
         }
-    }, [storyHistory, producerHistory, proofreaderHistory, scriptId]);
+    }, [storyHistory, producerHistory, proofreaderHistory, scriptId, onCacheChange]);
 
     const totalCapacity = charsPerColumn * pageCount;
 

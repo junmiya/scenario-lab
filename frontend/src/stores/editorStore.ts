@@ -13,11 +13,14 @@ export interface EditorState {
   title: string;
   authorName: string;
   synopsis: string;
+  characterText: string;
   content: string;
   settings: EditorSettings;
   metrics: GuideMetrics;
   synopsisSettings: EditorSettings;
   synopsisMetrics: GuideMetrics;
+  characterSettings: EditorSettings;
+  characterMetrics: GuideMetrics;
 }
 
 export const DEFAULT_SETTINGS: EditorSettings = {
@@ -26,6 +29,11 @@ export const DEFAULT_SETTINGS: EditorSettings = {
 };
 
 export const DEFAULT_SYNOPSIS_SETTINGS: EditorSettings = {
+  lineLength: 20,
+  pageCount: 2,
+};
+
+export const DEFAULT_CHARACTER_SETTINGS: EditorSettings = {
   lineLength: 20,
   pageCount: 2,
 };
@@ -60,6 +68,7 @@ export function createInitialEditorState(): EditorState {
     title: '',
     authorName: '',
     synopsis: '',
+    characterText: '',
     content: '',
     settings: DEFAULT_SETTINGS,
     metrics: {
@@ -70,6 +79,12 @@ export function createInitialEditorState(): EditorState {
     synopsisSettings: DEFAULT_SYNOPSIS_SETTINGS,
     synopsisMetrics: {
       totalCapacity: DEFAULT_SYNOPSIS_SETTINGS.lineLength * DEFAULT_SYNOPSIS_SETTINGS.pageCount,
+      filledRatio: 0,
+      currentLines: 0,
+    },
+    characterSettings: DEFAULT_CHARACTER_SETTINGS,
+    characterMetrics: {
+      totalCapacity: DEFAULT_CHARACTER_SETTINGS.lineLength * DEFAULT_CHARACTER_SETTINGS.pageCount,
       filledRatio: 0,
       currentLines: 0,
     },
@@ -94,4 +109,14 @@ export function updateSynopsis(state: EditorState, synopsis: string): EditorStat
 export function updateSynopsisSettings(state: EditorState, synopsisSettings: EditorSettings): EditorState {
   const next = { ...state, synopsisSettings };
   return { ...next, synopsisMetrics: recalculateGuideMetrics(next.synopsis, next.synopsisSettings) };
+}
+
+export function updateCharacterText(state: EditorState, characterText: string): EditorState {
+  const next = { ...state, characterText };
+  return { ...next, characterMetrics: recalculateGuideMetrics(next.characterText, next.characterSettings) };
+}
+
+export function updateCharacterSettings(state: EditorState, characterSettings: EditorSettings): EditorState {
+  const next = { ...state, characterSettings };
+  return { ...next, characterMetrics: recalculateGuideMetrics(next.characterText, next.characterSettings) };
 }

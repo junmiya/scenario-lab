@@ -5,26 +5,29 @@ import type { EditorSettings } from '../../stores/editorStore';
 interface SettingsProps {
   value: EditorSettings;
   onChange: (settings: EditorSettings) => void;
+  hideLineLength?: boolean | undefined;
 }
 
-export function Settings({ value, onChange }: SettingsProps): ReactElement {
+export function Settings({ value, onChange, hideLineLength }: SettingsProps): ReactElement {
   return (
     <section aria-label="Editor settings" className="flex-row">
-      <label>
-        文字数/行
-        <input
-          type="number"
-          min={10}
-          max={40}
-          value={value.lineLength}
-          onChange={(event) =>
-            onChange({
-              ...value,
-              lineLength: Number(event.currentTarget.value),
-            })
-          }
-        />
-      </label>
+      {!hideLineLength && (
+        <label>
+          文字数/行
+          <input
+            type="number"
+            min={10}
+            max={40}
+            value={value.lineLength}
+            onChange={(event) =>
+              onChange({
+                ...value,
+                lineLength: Number(event.currentTarget.value),
+              })
+            }
+          />
+        </label>
+      )}
       <label>
         枚数
         <input

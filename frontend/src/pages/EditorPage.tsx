@@ -5,50 +5,35 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../components/ui/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { getScript, updateScript } from '../lib/firebase/firestoreService';
-import { AdvicePanel } from '../components/advice/AdvicePanel';
-import { DiffView } from '../components/advice/DiffView';
-import { PartialAdvice } from '../components/advice/PartialAdvice';
-import { ContentCommentary } from '../components/advice/ContentCommentary';
-import { SynopsisCommentary } from '../components/advice/SynopsisCommentary';
-import { CharacterTable, type CharacterRow } from '../components/editor/CharacterTable';
+import { ContentCommentary, type ContentCommentaryCache } from '../components/advice/ContentCommentary';
+import { ExportPreview } from '../components/export/ExportPreview';
+import { SynopsisCommentary, type SynopsisCommentaryCache } from '../components/advice/SynopsisCommentary';
+import { DiscussionPanel, type DiscussionMessage } from '../components/advice/DiscussionPanel';
 import { Settings } from '../components/editor/Settings';
 import { VerticalEditor, type EditorHandle } from '../components/editor/VerticalEditor';
-import { SectionSelector } from '../components/structure/SectionSelector';
-import { StructurePanel, type StructureSegment } from '../components/structure/StructurePanel';
+import type { StructureSegment } from '../components/structure/StructurePanel';
 import {
   ScriptToolbar,
   applyToolbarAction,
   insertToolbarAction,
   type ToolbarAction,
 } from '../components/toolbar/ScriptToolbar';
-import {
-  generateAdvice,
-  listAdviceModels,
-  type AdviceModelDescriptor,
-} from '../services/adviceService';
 import { requestExport } from '../services/exportService';
 import { extractTextFromDocx } from '../services/importService';
-import {
-  createAdviceState,
-  selectPanelModel,
-  setPanelPreset,
-  type AdviceProvider,
-} from '../stores/adviceStore';
+import type { AiProvider } from '../lib/aiClient';
 import {
   createInitialEditorState,
   DEFAULT_SETTINGS,
   DEFAULT_SYNOPSIS_SETTINGS,
+  DEFAULT_CHARACTER_SETTINGS,
   recalculateGuideMetrics,
   updateContent,
   updateSettings,
   updateSynopsis,
   updateSynopsisSettings,
+  updateCharacterText,
+  updateCharacterSettings,
 } from '../stores/editorStore';
-
-interface AdviceResult {
-  structureFeedback: string;
-  emotionalFeedback: string;
-}
 
 const structureSegments: StructureSegment[] = [
   { id: 'intro', label: '起', ratio: 0.25 },
@@ -58,34 +43,22 @@ const structureSegments: StructureSegment[] = [
 ];
 
 const defaultSegmentId = structureSegments[0]?.id ?? 'intro';
-const defaultAdviceModels: AdviceModelDescriptor[] = [
-  { provider: 'gemini', label: 'Gemini', enabled: true },
-  { provider: 'openai', label: 'OpenAI', enabled: true },
-  { provider: 'anthropic', label: 'Anthropic', enabled: true },
-];
 
 export function EditorPage(): ReactElement {
   const { scriptId: routeScriptId } = useParams<{ scriptId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [state, setState] = useState(createInitialEditorState);
-  const [adviceState, setAdviceState] = useState(createAdviceState);
-  const [characters, setCharacters] = useState<CharacterRow[]>([]);
   const [activeSegmentId, setActiveSegmentId] = useState<string>(defaultSegmentId);
-  const [lastBeforeEdit, setLastBeforeEdit] = useState('');
-  const [panelAAdvice, setPanelAAdvice] = useState<AdviceResult>({
-    structureFeedback: 'アドバイス未生成',
-    emotionalFeedback: 'アドバイス未生成',
-  });
-  const [panelBAdvice, setPanelBAdvice] = useState<AdviceResult>({
-    structureFeedback: 'アドバイス未生成',
-    emotionalFeedback: 'アドバイス未生成',
-  });
-  const [adviceModels, setAdviceModels] = useState<AdviceModelDescriptor[]>(defaultAdviceModels);
-  const [adviceMessage, setAdviceMessage] = useState('');
+  const [exportPreview, setExportPreview] = useState('');
+  const [discussionProviderA, setDiscussionProviderA] = useState<AiProvider>('gemini');
+  const [discussionProviderB, setDiscussionProviderB] = useState<AiProvider>('claude');
+  const [discussionMessages, setDiscussionMessages] = useState<DiscussionMessage[]>([]);
   const [exportMessage, setExportMessage] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [saveMessage, setSaveMessage] = useState('');
+  const [contentCommentaryCache, setContentCommentaryCache] = useState<ContentCommentaryCache | undefined>(undefined);
+  const [synopsisCommentaryCache, setSynopsisCommentaryCache] = useState<SynopsisCommentaryCache | undefined>(undefined);
   const editorRef = useRef<EditorHandle | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -98,23 +71,27 @@ export function EditorPage(): ReactElement {
         if (script) {
           const settings = script.settings || DEFAULT_SETTINGS;
           const synSettings = script.synopsisSettings || DEFAULT_SYNOPSIS_SETTINGS;
+          const charSettings = script.characterSettings || DEFAULT_CHARACTER_SETTINGS;
+          const characterText = script.characterText || '';
           setState({
             title: script.title || '',
             authorName: script.authorName || '',
             synopsis: script.synopsis || '',
+            characterText,
             content: script.content || '',
             settings,
             metrics: recalculateGuideMetrics(script.content || '', settings),
             synopsisSettings: synSettings,
             synopsisMetrics: recalculateGuideMetrics(script.synopsis || '', synSettings),
+            characterSettings: charSettings,
+            characterMetrics: recalculateGuideMetrics(characterText, charSettings),
           });
-          setCharacters(script.characters?.map((c) => {
-            const row: CharacterRow = { id: c.id, name: c.name };
-            if (c.age) row.age = c.age;
-            if (c.traits) row.traits = c.traits;
-            if (c.background) row.background = c.background;
-            return row;
-          }) || []);
+          if (script.contentCommentary) {
+            setContentCommentaryCache(script.contentCommentary as ContentCommentaryCache);
+          }
+          if (script.synopsisCommentary) {
+            setSynopsisCommentaryCache(script.synopsisCommentary as SynopsisCommentaryCache);
+          }
         }
       } catch (error) {
         console.error('Failed to load script from Firestore:', error);
@@ -132,15 +109,12 @@ export function EditorPage(): ReactElement {
         authorName: state.authorName,
         synopsis: state.synopsis,
         content: state.content,
-        characters: characters.map((c) => {
-          const entry: { id: string; name: string; age?: string; traits?: string; background?: string } = { id: c.id, name: c.name };
-          if (c.age) entry.age = c.age;
-          if (c.traits) entry.traits = c.traits;
-          if (c.background) entry.background = c.background;
-          return entry;
-        }),
+        characterText: state.characterText,
         settings: state.settings,
         synopsisSettings: state.synopsisSettings,
+        characterSettings: state.characterSettings,
+        ...(contentCommentaryCache ? { contentCommentary: contentCommentaryCache } : {}),
+        ...(synopsisCommentaryCache ? { synopsisCommentary: synopsisCommentaryCache } : {}),
       });
       setSaveMessage('保存しました');
       setTimeout(() => setSaveMessage(''), 2000);
@@ -148,47 +122,7 @@ export function EditorPage(): ReactElement {
       console.error('Failed to save to Firestore:', error);
       setSaveMessage('保存に失敗しました');
     }
-  }, [routeScriptId, state, characters]);
-
-  const resolveProvider = (
-    current: AdviceProvider,
-    models: AdviceModelDescriptor[],
-    fallback: AdviceProvider,
-  ): AdviceProvider => {
-    const enabled = models.filter((item) => item.enabled).map((item) => item.provider);
-    if (enabled.length === 0) {
-      return fallback;
-    }
-
-    if (enabled.includes(current)) {
-      return current;
-    }
-
-    return enabled[0] ?? fallback;
-  };
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const models = await listAdviceModels();
-        setAdviceModels(models);
-        setAdviceState((current) => ({
-          ...current,
-          panelA: {
-            ...current.panelA,
-            provider: resolveProvider(current.panelA.provider, models, 'gemini'),
-          },
-          panelB: {
-            ...current.panelB,
-            provider: resolveProvider(current.panelB.provider, models, 'openai'),
-          },
-        }));
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        setAdviceMessage(`モデル一覧取得失敗: ${message}`);
-      }
-    })();
-  }, []);
+  }, [routeScriptId, state, contentCommentaryCache, synopsisCommentaryCache]);
 
   const onToolbarApply = (action: ToolbarAction): void => {
     if (editorRef.current) {
@@ -211,47 +145,11 @@ export function EditorPage(): ReactElement {
     return Math.max(state.synopsisMetrics.totalCapacity - synopsisContentLength, 0);
   }, [state.synopsisMetrics.totalCapacity, synopsisContentLength]);
 
-  const regenerateAdvice = async (selectedText?: string): Promise<void> => {
-    const providerEnabled = (provider: AdviceProvider): boolean =>
-      adviceModels.some((item) => item.provider === provider && item.enabled);
-    if (
-      !providerEnabled(adviceState.panelA.provider) ||
-      !providerEnabled(adviceState.panelB.provider)
-    ) {
-      setAdviceMessage('選択中のモデルが利用不可です。モデル設定を見直してください。');
-      return;
-    }
+  const characterContentLength = useMemo(() => state.characterText.replace(/[\r\n]/g, '').length, [state.characterText]);
 
-    const response = await generateAdvice({
-      documentId: routeScriptId || 'unsaved',
-      synopsis: state.synopsis,
-      content: state.content,
-      ...(selectedText !== undefined ? { selectedText } : {}),
-      panelAProvider: adviceState.panelA.provider,
-      panelBProvider: adviceState.panelB.provider,
-      panelAPreset: adviceState.panelA.preset,
-      panelBPreset: adviceState.panelB.preset,
-    });
-
-    setPanelAAdvice({
-      structureFeedback: response.panelA.structureFeedback,
-      emotionalFeedback: response.panelA.emotionalFeedback,
-    });
-    setPanelBAdvice({
-      structureFeedback: response.panelB.structureFeedback,
-      emotionalFeedback: response.panelB.emotionalFeedback,
-    });
-    setAdviceMessage('');
-  };
-
-  const onRequestPartialAdvice = async (selectedText: string): Promise<void> => {
-    await regenerateAdvice(selectedText);
-  };
-
-  const applyAdviceExamplePatch = (): void => {
-    setLastBeforeEdit(state.content);
-    setState((current) => updateContent(current, `${current.content}\n# 修正案を反映\n`));
-  };
+  const characterRemaining = useMemo(() => {
+    return Math.max(state.characterMetrics.totalCapacity - characterContentLength, 0);
+  }, [state.characterMetrics.totalCapacity, characterContentLength]);
 
   const onImportDocx = async (file: File): Promise<void> => {
     try {
@@ -272,9 +170,11 @@ export function EditorPage(): ReactElement {
         authorName: state.authorName || 'unknown-author',
         content: state.content,
       });
-      setExportMessage(`Export ready: ${payload.fileName} (${payload.content.replace(/[\r\n]/g, '').length} chars)`);
+      setExportMessage(`${payload.fileName} (${payload.content.replace(/[\r\n]/g, '').length} 字)`);
+      setExportPreview(payload.content);
     } catch (error) {
       setExportMessage(error instanceof Error ? error.message : String(error));
+      setExportPreview('');
     }
   };
 
@@ -300,7 +200,7 @@ export function EditorPage(): ReactElement {
         {/* ── 作品情報 ── */}
         <section className="section-container" aria-label="作品情報">
           <h3>作品情報</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr', gap: 'var(--space-md)', alignItems: 'end' }}>
             <label>
               タイトル
               <input
@@ -323,16 +223,39 @@ export function EditorPage(): ReactElement {
                 placeholder="著者名"
               />
             </label>
+            <label>
+              文字数/行
+              <input
+                type="number"
+                min={10}
+                max={40}
+                value={state.settings.lineLength}
+                onChange={(event) => {
+                  const lineLength = Number(event.currentTarget.value);
+                  setState((current) => {
+                    const s = { ...current };
+                    s.settings = { ...s.settings, lineLength };
+                    s.metrics = recalculateGuideMetrics(s.content, s.settings);
+                    s.synopsisSettings = { ...s.synopsisSettings, lineLength };
+                    s.synopsisMetrics = recalculateGuideMetrics(s.synopsis, s.synopsisSettings);
+                    s.characterSettings = { ...s.characterSettings, lineLength };
+                    s.characterMetrics = recalculateGuideMetrics(s.characterText, s.characterSettings);
+                    return s;
+                  });
+                }}
+              />
+            </label>
           </div>
         </section>
 
         {/* ── あらすじ ── */}
         <section className="section-container" aria-label="あらすじ">
           <h3>あらすじ</h3>
-          <SynopsisCommentary synopsis={state.synopsis} scriptId={routeScriptId ?? ''} charsPerColumn={state.synopsisSettings.lineLength} pageCount={state.synopsisSettings.pageCount}>
+          <SynopsisCommentary synopsis={state.synopsis} scriptId={routeScriptId ?? ''} charsPerColumn={state.synopsisSettings.lineLength} pageCount={state.synopsisSettings.pageCount} initialCache={synopsisCommentaryCache} onCacheChange={setSynopsisCommentaryCache}>
             <Settings
               value={state.synopsisSettings}
               onChange={(value) => setState((current) => updateSynopsisSettings(current, value))}
+              hideLineLength
             />
             <VerticalEditor
               value={state.synopsis}
@@ -350,14 +273,117 @@ export function EditorPage(): ReactElement {
         {/* ── 本文 ── */}
         <section className="section-container" aria-label="本文">
           <h3>本文</h3>
-          <ContentCommentary content={state.content} scriptId={routeScriptId ?? ''} charsPerColumn={state.settings.lineLength} pageCount={state.settings.pageCount}>
+          <ContentCommentary
+            content={state.content}
+            scriptId={routeScriptId ?? ''}
+            charsPerColumn={state.settings.lineLength}
+            pageCount={state.settings.pageCount}
+            initialCache={contentCommentaryCache}
+            onCacheChange={setContentCommentaryCache}
+            afterDirector={synopsisContentLength >= 10 ? (
+              <div style={{ margin: '0.5rem 0' }}>
+                <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>構成ガイド</div>
+                <div style={{ display: 'flex', direction: 'rtl', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+                  {structureSegments.map((seg) => {
+                    const chars = Math.round(state.metrics.totalCapacity * seg.ratio);
+                    const isActive = seg.id === activeSegmentId;
+                    return (
+                      <div key={seg.id} style={{
+                        flex: seg.ratio,
+                        padding: '0.375rem 0.5rem',
+                        textAlign: 'center',
+                        fontSize: '0.75rem',
+                        fontWeight: isActive ? 700 : 400,
+                        backgroundColor: isActive ? 'var(--color-primary-light, #dbeafe)' : 'var(--color-surface)',
+                        borderLeft: '1px solid var(--color-border)',
+                        color: isActive ? 'var(--color-primary, #2563eb)' : 'var(--text-primary)',
+                        direction: 'ltr',
+                      }}>
+                        <span style={{ fontWeight: 600 }}>{seg.label}</span>
+                        <span style={{ fontSize: '0.625rem', color: 'var(--text-secondary)', marginLeft: '0.25rem' }}>
+                          {Math.round(seg.ratio * 100)}% ({chars}字)
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : undefined}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
               <Settings
                 value={state.settings}
                 onChange={(value) => setState((current) => updateSettings(current, value))}
+                hideLineLength
               />
               <ScriptToolbar onApply={onToolbarApply} />
             </div>
+            {/* 執筆開始位置ボタン */}
+            {synopsisContentLength >= 10 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.5rem', direction: 'rtl' }}>
+                <span style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', direction: 'ltr' }}>執筆開始位置:</span>
+                {structureSegments.map((seg) => {
+                  const isActive = seg.id === activeSegmentId;
+                  return (
+                    <button
+                      key={seg.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveSegmentId(seg.id);
+                        // Calculate character offset for this segment
+                        const offset = structureSegments
+                          .slice(0, structureSegments.indexOf(seg))
+                          .reduce((sum, s) => sum + Math.round(state.metrics.totalCapacity * s.ratio), 0);
+                        // Insert section marker at cursor or jump to offset
+                        if (editorRef.current) {
+                          const el = editorRef.current.element;
+                          if (el) {
+                            const text = el.innerText ?? '';
+                            if (text.length <= offset) {
+                              // Pad with newlines and insert marker
+                              const pad = offset > text.length ? '\n'.repeat(Math.max(1, Math.ceil((offset - text.length) / state.settings.lineLength))) : '';
+                              editorRef.current.insertText(`${pad}\n【${seg.label}】`);
+                            } else {
+                              // Place cursor at the offset position
+                              editorRef.current.focus();
+                              const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+                              let remaining = offset;
+                              let node = walker.nextNode();
+                              while (node) {
+                                const len = (node.textContent ?? '').length;
+                                if (remaining <= len) {
+                                  const range = document.createRange();
+                                  range.setStart(node, remaining);
+                                  range.collapse(true);
+                                  const selection = window.getSelection();
+                                  selection?.removeAllRanges();
+                                  selection?.addRange(range);
+                                  break;
+                                }
+                                remaining -= len;
+                                node = walker.nextNode();
+                              }
+                            }
+                          }
+                        }
+                      }}
+                      style={{
+                        fontSize: '0.6875rem',
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--color-border)',
+                        cursor: 'pointer',
+                        backgroundColor: isActive ? 'var(--color-primary-light, #dbeafe)' : 'var(--color-bg-primary)',
+                        color: isActive ? 'var(--color-primary, #2563eb)' : 'var(--text-secondary)',
+                        fontWeight: isActive ? 600 : 400,
+                      }}
+                    >
+                      {seg.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <VerticalEditor
               ref={editorRef}
               value={state.content}
@@ -375,66 +401,42 @@ export function EditorPage(): ReactElement {
         {/* ── 登場人物 ── */}
         <section className="section-container" aria-label="登場人物">
           <h3>登場人物</h3>
-          <CharacterTable value={characters} onChange={setCharacters} />
+          <Settings
+            value={state.characterSettings}
+            onChange={(value) => setState((current) => updateCharacterSettings(current, value))}
+            hideLineLength
+          />
+          <VerticalEditor
+            value={state.characterText}
+            onChange={(value) => setState((current) => updateCharacterText(current, value))}
+            lineCount={Math.max(5, state.characterMetrics.currentLines, state.characterSettings.pageCount * 20)}
+            charsPerColumn={state.characterSettings.lineLength}
+            placeholder="登場人物を入力..."
+          />
+          <p className="status-text" style={{ marginTop: 'var(--space-sm)' }}>
+            文字数: {characterContentLength} / 行数: {state.characterMetrics.currentLines} / 目安容量: {state.characterMetrics.totalCapacity}字 ({state.characterSettings.pageCount}枚) / 残り: {characterRemaining}字
+          </p>
         </section>
 
-        {/* ── AIアドバイス ── */}
-        <section className="section-container" aria-label="AIアドバイス">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
-            <h3 style={{ margin: 0 }}>AIアドバイス</h3>
-            <button type="button" className="btn-primary" onClick={() => void regenerateAdvice()}>
-              全体アドバイス更新
-            </button>
-          </div>
-          {adviceMessage ? <p className="status-text">{adviceMessage}</p> : null}
-          <div className="grid-2col">
-            <AdvicePanel
-              title="Advice A"
-              provider={adviceState.panelA.provider}
-              models={adviceModels}
-              preset={adviceState.panelA.preset}
-              structureFeedback={panelAAdvice.structureFeedback}
-              emotionalFeedback={panelAAdvice.emotionalFeedback}
-              onProviderChange={(provider) =>
-                setAdviceState((current) => selectPanelModel(current, 'A', provider))
-              }
-              onPresetChange={(preset) =>
-                setAdviceState((current) => setPanelPreset(current, 'A', preset))
-              }
-            />
-            <AdvicePanel
-              title="Advice B"
-              provider={adviceState.panelB.provider}
-              models={adviceModels}
-              preset={adviceState.panelB.preset}
-              structureFeedback={panelBAdvice.structureFeedback}
-              emotionalFeedback={panelBAdvice.emotionalFeedback}
-              onProviderChange={(provider) =>
-                setAdviceState((current) => selectPanelModel(current, 'B', provider))
-              }
-              onPresetChange={(preset) =>
-                setAdviceState((current) => setPanelPreset(current, 'B', preset))
-              }
-            />
-          </div>
-          <PartialAdvice onRequest={onRequestPartialAdvice} />
-        </section>
-
-        {/* ── 構成 ── */}
-        <section className="section-container" aria-label="構成">
-          <h3>構成</h3>
-          <StructurePanel segments={structureSegments} activeSegmentId={activeSegmentId} />
-          <SectionSelector
-            segments={structureSegments}
-            activeSegmentId={activeSegmentId}
-            onSelect={setActiveSegmentId}
+        {/* ── AI採点者議論 ── */}
+        <section className="section-container" aria-label="AI採点者議論">
+          <h3>AI採点者議論</h3>
+          <DiscussionPanel
+            synopsis={state.synopsis}
+            content={state.content}
+            providerA={discussionProviderA}
+            providerB={discussionProviderB}
+            onProviderAChange={setDiscussionProviderA}
+            onProviderBChange={setDiscussionProviderB}
+            messages={discussionMessages}
+            onMessagesChange={setDiscussionMessages}
           />
         </section>
 
         {/* ── ツール ── */}
         <section className="section-container" aria-label="ツール">
           <h3>ツール</h3>
-          <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'center' }}>
             <button type="button" onClick={() => fileInputRef.current?.click()}>
               Word読み込み
             </button>
@@ -450,15 +452,26 @@ export function EditorPage(): ReactElement {
               }}
             />
             <button type="button" onClick={() => void onExport()}>
-              エクスポート
+              書き出し
             </button>
-            <button type="button" onClick={applyAdviceExamplePatch}>
-              修正例を本文に反映
-            </button>
+            {exportPreview && (
+              <button type="button" onClick={() => setExportPreview('')} style={{ fontSize: '0.75rem', backgroundColor: 'transparent', border: '1px solid var(--color-border)', color: 'var(--text-secondary)' }}>
+                プレビューを閉じる
+              </button>
+            )}
           </div>
           {statusMessage ? <p className="status-text">{statusMessage}</p> : null}
           {exportMessage ? <p className="status-text">{exportMessage}</p> : null}
-          {lastBeforeEdit && <DiffView before={lastBeforeEdit} after={state.content} />}
+          {exportPreview && (
+            <div style={{ marginTop: 'var(--space-sm)' }}>
+              <ExportPreview
+                title={state.title}
+                authorName={state.authorName}
+                content={exportPreview}
+                charsPerColumn={state.settings.lineLength}
+              />
+            </div>
+          )}
         </section>
       </main>
     </Layout>

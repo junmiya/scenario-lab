@@ -20,6 +20,7 @@ export interface FirestoreScript {
     authorName: string;
     synopsis: string;
     content: string;
+    characterText: string;
     characters: Array<{
         id: string;
         name: string;
@@ -35,6 +36,12 @@ export interface FirestoreScript {
         lineLength: number;
         pageCount: number;
     };
+    characterSettings?: {
+        lineLength: number;
+        pageCount: number;
+    };
+    contentCommentary?: { director: any[]; scriptdoctor: any[]; proofreader: any[] };
+    synopsisCommentary?: { story: any[]; producer: any[]; proofreader: any[] };
     createdAt?: any;
     updatedAt?: any;
 }
@@ -54,6 +61,7 @@ export async function createScript(ownerId: string, data: {
         authorName: data.authorName || '',
         synopsis: '',
         content: '',
+        characterText: '',
         characters: [],
         settings: data.settings,
         createdAt: serverTimestamp(),
@@ -97,7 +105,7 @@ export async function getScript(scriptId: string): Promise<FirestoreScript | nul
  */
 export async function updateScript(
     scriptId: string,
-    data: Partial<Pick<FirestoreScript, 'title' | 'authorName' | 'synopsis' | 'content' | 'characters' | 'settings' | 'synopsisSettings'>>,
+    data: Partial<Pick<FirestoreScript, 'title' | 'authorName' | 'synopsis' | 'content' | 'characterText' | 'characters' | 'settings' | 'synopsisSettings' | 'characterSettings' | 'contentCommentary' | 'synopsisCommentary'>>,
 ): Promise<void> {
     const docRef = doc(db, 'scripts', scriptId);
     await updateDoc(docRef, {

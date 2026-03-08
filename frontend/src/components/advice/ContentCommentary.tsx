@@ -9,12 +9,21 @@ interface CommentEntry {
     timestamp: number;
 }
 
+export interface ContentCommentaryCache {
+    director: CommentEntry[];
+    scriptdoctor: CommentEntry[];
+    proofreader: CommentEntry[];
+}
+
 interface ContentCommentaryProps {
     content: string;
     scriptId?: string;
     charsPerColumn?: number;
     pageCount?: number;
     children?: ReactNode;
+    afterDirector?: ReactNode | undefined;
+    initialCache?: ContentCommentaryCache | undefined;
+    onCacheChange?: ((cache: ContentCommentaryCache) => void) | undefined;
 }
 
 const DEBOUNCE_MS = 2000;
@@ -164,8 +173,8 @@ function saveCached(scriptId: string | undefined, director: CommentEntry[], scri
     localStorage.setItem(`${STORAGE_PREFIX}${scriptId}`, JSON.stringify({ director, scriptdoctor, proofreader }));
 }
 
-export function ContentCommentary({ content, scriptId, charsPerColumn = 20, pageCount = 10, children }: ContentCommentaryProps): ReactElement {
-    const cached = useRef(loadCached(scriptId));
+export function ContentCommentary({ content, scriptId, charsPerColumn = 20, pageCount = 10, children, afterDirector, initialCache, onCacheChange }: ContentCommentaryProps): ReactElement {
+    const cached = useRef(initialCache ?? loadCached(scriptId));
 
     // Director panel state
     const [directorHistory, setDirectorHistory] = useState<CommentEntry[]>(cached.current.director);
@@ -213,12 +222,13 @@ export function ContentCommentary({ content, scriptId, charsPerColumn = 20, page
     const sdComment = sdHistory[sdIndex]?.text ?? DEFAULT_MSG;
     const prComment = prHistory[prIndex]?.text ?? DEFAULT_MSG;
 
-    // Persist to localStorage
+    // Persist to localStorage + notify parent
     useEffect(() => {
         if (directorHistory.length > 0 || sdHistory.length > 0 || prHistory.length > 0) {
             saveCached(scriptId, directorHistory, sdHistory, prHistory);
+            onCacheChange?.({ director: directorHistory, scriptdoctor: sdHistory, proofreader: prHistory });
         }
-    }, [directorHistory, sdHistory, prHistory, scriptId]);
+    }, [directorHistory, sdHistory, prHistory, scriptId, onCacheChange]);
 
     const totalCapacity = charsPerColumn * pageCount;
 
@@ -471,6 +481,9 @@ export function ContentCommentary({ content, scriptId, charsPerColumn = 20, page
                 )}
                 {!directorCollapsed && panelBody(directorComment, directorLoading, directorShowDel)}
             </div>
+
+            {/* After director slot (e.g. structure guide) */}
+            {afterDirector}
 
             {/* Editor slot (middle) */}
             {children}
