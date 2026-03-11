@@ -3,7 +3,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-export function Layout({ children }: { children: ReactNode }) {
+interface LayoutProps {
+    children: ReactNode;
+    headerTitle?: string | undefined;
+    headerActions?: ReactNode | undefined;
+}
+
+export function Layout({ children, headerTitle, headerActions }: LayoutProps) {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
 
@@ -13,28 +19,48 @@ export function Layout({ children }: { children: ReactNode }) {
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: 'var(--color-background)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: 'var(--color-bg-secondary)' }}>
             <header style={{
                 display: 'flex',
                 alignItems: 'center',
                 padding: '0.75rem 1.5rem',
-                borderBottom: '1px solid var(--border)',
-                backgroundColor: 'var(--color-surface)',
+                borderBottom: '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-bg-primary)',
                 position: 'sticky',
                 top: 0,
                 zIndex: 10
             }}>
-                <div
-                    onClick={() => navigate('/catalog')}
-                    style={{
-                        fontSize: '1.25rem',
-                        fontWeight: 700,
-                        color: 'var(--text-primary)',
-                        flexGrow: 1,
-                        cursor: 'pointer'
-                    }}
-                >
-                    Scenario Writing Lab
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexGrow: 1 }}>
+                    <div
+                        onClick={() => navigate('/catalog')}
+                        style={{
+                            fontSize: '1.25rem',
+                            fontWeight: 700,
+                            color: 'var(--text-primary)',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        Scenario Lab
+                    </div>
+                    {headerTitle && (
+                        <span style={{
+                            fontSize: '0.875rem',
+                            color: 'var(--text-secondary)',
+                            borderLeft: '1px solid var(--border)',
+                            paddingLeft: '1rem',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                        }}>
+                            {headerTitle}
+                        </span>
+                    )}
+                    {headerActions && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
+                            {headerActions}
+                        </div>
+                    )}
                 </div>
 
                 {user && (

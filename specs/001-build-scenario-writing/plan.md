@@ -1,4 +1,4 @@
-# Implementation Plan: Scenario Writing Lab MVP
+# Implementation Plan: Scenario Lab MVP
 
 **Branch**: `001-build-scenario-writing` | **Date**: 2026-02-10 | **Spec**: `specs/001-build-scenario-writing/spec.md`
 **Input**: Feature specification from `/specs/001-build-scenario-writing/spec.md`

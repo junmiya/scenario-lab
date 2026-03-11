@@ -19,7 +19,6 @@ function paginateVertical(
     charsPerColumn: number,
     columnsPerPage: number,
 ): string[][] {
-    // Split into paragraphs, then wrap each into columns
     const paragraphs = text.split('\n');
     const allColumns: string[] = [];
 
@@ -33,7 +32,6 @@ function paginateVertical(
         }
     }
 
-    // Group columns into pages
     const pages: string[][] = [];
     for (let i = 0; i < allColumns.length; i += columnsPerPage) {
         pages.push(allColumns.slice(i, i + columnsPerPage));
@@ -42,6 +40,28 @@ function paginateVertical(
     if (pages.length === 0) pages.push([]);
     return pages;
 }
+
+const PAGE_STYLE: React.CSSProperties = {
+    position: 'relative',
+    width: '100%',
+    maxWidth: '680px',
+    minHeight: '480px',
+    padding: '2.5rem 2rem 2rem 2rem',
+    backgroundColor: '#fff',
+    border: '1px solid #d1d5db',
+    borderRadius: '2px',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+    fontFamily: FONT,
+};
+
+const PAGE_NUMBER_STYLE: React.CSSProperties = {
+    position: 'absolute',
+    bottom: '0.75rem',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    fontSize: '0.625rem',
+    color: '#9ca3af',
+};
 
 export function ExportPreview({
     title,
@@ -56,6 +76,7 @@ export function ExportPreview({
     );
 
     const colHeight = `${charsPerColumn * 1.35 + 1.5}em`;
+    const totalPages = pages.length + 1; // +1 for title page
 
     return (
         <div style={{
@@ -69,78 +90,60 @@ export function ExportPreview({
             overflow: 'auto',
             maxHeight: '70vh',
         }}>
-            {pages.map((pageCols, pageIdx) => (
-                <div key={pageIdx} style={{
-                    position: 'relative',
-                    width: '100%',
-                    maxWidth: '680px',
-                    minHeight: '480px',
-                    padding: '2.5rem 2rem 2rem 2rem',
-                    backgroundColor: '#fff',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '2px',
-                    boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-                    fontFamily: FONT,
+            {/* ── Title page ── */}
+            <div style={PAGE_STYLE}>
+                <div style={PAGE_NUMBER_STYLE}>1 / {totalPages}</div>
+                <div style={{
+                    writingMode: 'vertical-rl',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    gap: '2em',
+                    height: '100%',
+                    minHeight: '400px',
                 }}>
-                    {/* Page number */}
-                    <div style={{
-                        position: 'absolute',
-                        bottom: '0.75rem',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        fontSize: '0.625rem',
-                        color: '#9ca3af',
-                    }}>
-                        {pageIdx + 1} / {pages.length}
-                    </div>
-
-                    {/* Title page overlay for first page */}
-                    {pageIdx === 0 && (title || authorName) && (
+                    {title && (
                         <div style={{
-                            writingMode: 'vertical-rl',
-                            position: 'absolute',
-                            top: '2.5rem',
-                            right: '2rem',
-                            display: 'flex',
-                            gap: '1.5em',
-                            pointerEvents: 'none',
+                            fontSize: '1.25rem',
+                            fontWeight: 700,
+                            color: '#111',
+                            letterSpacing: '0.2em',
                         }}>
-                            {title && (
-                                <div style={{
-                                    fontSize: '1rem',
-                                    fontWeight: 700,
-                                    color: '#111',
-                                    letterSpacing: '0.15em',
-                                }}>
-                                    {title}
-                                </div>
-                            )}
-                            {authorName && (
-                                <div style={{
-                                    fontSize: '0.75rem',
-                                    color: '#6b7280',
-                                    paddingTop: '2em',
-                                }}>
-                                    {authorName}
-                                </div>
-                            )}
+                            {title}
                         </div>
                     )}
+                    {authorName && (
+                        <div style={{
+                            fontSize: '0.875rem',
+                            color: '#4b5563',
+                            paddingTop: '3em',
+                        }}>
+                            作　{authorName}
+                        </div>
+                    )}
+                </div>
+            </div>
 
-                    {/* Vertical text columns */}
+            {/* ── Body pages ── */}
+            {pages.map((pageCols, pageIdx) => (
+                <div key={pageIdx} style={PAGE_STYLE}>
+                    <div style={PAGE_NUMBER_STYLE}>
+                        {pageIdx + 2} / {totalPages}
+                    </div>
+
                     <div style={{
-                        writingMode: 'vertical-rl',
                         display: 'flex',
+                        flexDirection: 'row-reverse',
                         gap: 0,
                         height: colHeight,
                         overflow: 'hidden',
-                        ...(pageIdx === 0 && (title || authorName) ? { marginTop: '3.5rem' } : {}),
                     }}>
                         {pageCols.length === 0 ? (
-                            <div style={{ color: '#d1d5db', fontSize: '0.8125rem' }}>&nbsp;</div>
+                            <div style={{ writingMode: 'vertical-rl', color: '#d1d5db', fontSize: '0.8125rem' }}>&nbsp;</div>
                         ) : (
                             pageCols.map((col, colIdx) => (
                                 <div key={colIdx} style={{
+                                    writingMode: 'vertical-rl',
                                     fontSize: '0.8125rem',
                                     lineHeight: 1.5,
                                     letterSpacing: '0.05em',
@@ -148,6 +151,7 @@ export function ExportPreview({
                                     paddingLeft: '0.25em',
                                     paddingRight: '0.25em',
                                     minWidth: '1.3em',
+                                    height: '100%',
                                     whiteSpace: 'nowrap',
                                     color: col.length === 0 ? 'transparent' : '#1f2937',
                                 }}>

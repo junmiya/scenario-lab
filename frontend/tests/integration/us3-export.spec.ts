@@ -16,7 +16,7 @@ describe('US3 structure and export flow', () => {
       content: '本文',
     });
 
-    expect(payload.fileName.endsWith('.docx')).toBe(true);
+    expect(payload.fileName.endsWith('.txt')).toBe(true);
     expect(payload.content.length).toBeGreaterThan(0);
   });
 });

@@ -1,4 +1,4 @@
-# Scenario Writing Lab デザインルール
+# Scenario Lab デザインルール
 
 UI・ビジュアル・UXに関するルール。
 親ファイル: [constitution.md](./constitution.md)

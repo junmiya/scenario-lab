@@ -1,4 +1,4 @@
-# Scenario Writing Lab
+# Scenario Lab
 
 MVP web app for screenplay drafting with vertical writing support, secure document storage,
 and dual AI feedback workflows.

@@ -1,4 +1,4 @@
-# Quickstart: Scenario Writing Lab MVP
+# Quickstart: Scenario Lab MVP
 
 ## Prerequisites
 

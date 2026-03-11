@@ -45,6 +45,7 @@ export interface FirestoreScript {
     };
     contentCommentary?: { director: any[]; scriptdoctor: any[]; proofreader: any[] };
     synopsisCommentary?: { story: any[]; producer: any[]; proofreader: any[] };
+    discussionMessages?: any[];
     createdAt?: any;
     updatedAt?: any;
 }
@@ -108,7 +109,7 @@ export async function getScript(scriptId: string): Promise<FirestoreScript | nul
  */
 export async function updateScript(
     scriptId: string,
-    data: Partial<Pick<FirestoreScript, 'title' | 'authorName' | 'synopsis' | 'content' | 'characterText' | 'characters' | 'settings' | 'synopsisSettings' | 'characterSettings' | 'contentCommentary' | 'synopsisCommentary'>>,
+    data: Partial<Pick<FirestoreScript, 'title' | 'authorName' | 'synopsis' | 'content' | 'characterText' | 'characters' | 'settings' | 'synopsisSettings' | 'characterSettings' | 'contentCommentary' | 'synopsisCommentary' | 'discussionMessages'>>,
 ): Promise<void> {
     const docRef = doc(db, 'scripts', scriptId);
     await updateDoc(docRef, {

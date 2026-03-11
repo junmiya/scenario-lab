@@ -18,7 +18,7 @@ import {
   insertToolbarAction,
   type ToolbarAction,
 } from '../components/toolbar/ScriptToolbar';
-import { requestExport } from '../services/exportService';
+import { createExportPayload, savePayloadAs } from '../services/exportService';
 import { extractTextFromDocx } from '../services/importService';
 import type { AiProvider } from '../lib/aiClient';
 import {
@@ -92,6 +92,9 @@ export function EditorPage(): ReactElement {
           if (script.synopsisCommentary) {
             setSynopsisCommentaryCache(script.synopsisCommentary as SynopsisCommentaryCache);
           }
+          if (script.discussionMessages) {
+            setDiscussionMessages(script.discussionMessages as DiscussionMessage[]);
+          }
         }
       } catch (error) {
         console.error('Failed to load script from Firestore:', error);
@@ -115,6 +118,7 @@ export function EditorPage(): ReactElement {
         characterSettings: state.characterSettings,
         ...(contentCommentaryCache ? { contentCommentary: contentCommentaryCache } : {}),
         ...(synopsisCommentaryCache ? { synopsisCommentary: synopsisCommentaryCache } : {}),
+        ...(discussionMessages.length > 0 ? { discussionMessages } : {}),
       });
       setSaveMessage('保存しました');
       setTimeout(() => setSaveMessage(''), 2000);
@@ -122,7 +126,7 @@ export function EditorPage(): ReactElement {
       console.error('Failed to save to Firestore:', error);
       setSaveMessage('保存に失敗しました');
     }
-  }, [routeScriptId, state, contentCommentaryCache, synopsisCommentaryCache]);
+  }, [routeScriptId, state, contentCommentaryCache, synopsisCommentaryCache, discussionMessages]);
 
   const onToolbarApply = (action: ToolbarAction): void => {
     if (editorRef.current) {
@@ -162,40 +166,53 @@ export function EditorPage(): ReactElement {
     }
   };
 
-  const onExport = async (): Promise<void> => {
+  const onPreview = (): void => {
     try {
-      const payload = await requestExport({
-        documentId: routeScriptId || 'unsaved',
+      createExportPayload({
         title: state.title || 'untitled-script',
         authorName: state.authorName || 'unknown-author',
         content: state.content,
       });
-      setExportMessage(`${payload.fileName} (${payload.content.replace(/[\r\n]/g, '').length} 字)`);
-      setExportPreview(payload.content);
+      setExportMessage('');
+      setExportPreview(state.content);
     } catch (error) {
       setExportMessage(error instanceof Error ? error.message : String(error));
       setExportPreview('');
     }
   };
 
+  const onDownload = async (): Promise<void> => {
+    try {
+      const payload = createExportPayload({
+        title: state.title || 'untitled-script',
+        authorName: state.authorName || 'unknown-author',
+        content: state.content,
+      });
+      const savedName = await savePayloadAs(payload);
+      if (savedName) {
+        setExportMessage(`${savedName} を保存しました`);
+      }
+    } catch (error) {
+      setExportMessage(error instanceof Error ? error.message : String(error));
+    }
+  };
+
   return (
-    <Layout>
+    <Layout
+      headerTitle="脚本エディタ"
+      headerActions={<>
+        {saveMessage && <span style={{ fontSize: '0.875rem', color: 'var(--color-success)' }}>{saveMessage}</span>}
+        {routeScriptId && (
+          <button type="button" className="btn-primary" onClick={() => void saveToFirestore()} style={{ fontWeight: 600 }}>
+            保存
+          </button>
+        )}
+        <button type="button" onClick={() => navigate('/catalog')} style={{ backgroundColor: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
+          一覧に戻る
+        </button>
+      </>}
+    >
       <main className="main-container">
-        {/* ── ヘッダー ── */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ margin: 0 }}>脚本エディタ</h1>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            {saveMessage && <span style={{ fontSize: '0.875rem', color: 'var(--color-success)' }}>{saveMessage}</span>}
-            {routeScriptId && (
-              <button type="button" className="btn-primary" onClick={() => void saveToFirestore()} style={{ fontWeight: 600 }}>
-                保存
-              </button>
-            )}
-            <button type="button" onClick={() => navigate('/catalog')} style={{ backgroundColor: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-              一覧に戻る
-            </button>
-          </div>
-        </div>
 
         {/* ── 作品情報 ── */}
         <section className="section-container" aria-label="作品情報">
@@ -476,8 +493,11 @@ export function EditorPage(): ReactElement {
                 e.currentTarget.value = '';
               }}
             />
-            <button type="button" onClick={() => void onExport()}>
-              書き出し
+            <button type="button" onClick={onPreview}>
+              書き出しプレビュー
+            </button>
+            <button type="button" onClick={() => void onDownload()}>
+              ダウンロード
             </button>
             {exportPreview && (
               <button type="button" onClick={() => setExportPreview('')} style={{ fontSize: '0.75rem', backgroundColor: 'transparent', border: '1px solid var(--color-border)', color: 'var(--text-secondary)' }}>

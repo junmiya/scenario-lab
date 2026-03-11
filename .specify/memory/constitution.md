@@ -26,7 +26,7 @@ Sync Impact Report
 - Follow-up TODOs:
   - None
 -->
-# Scenario Writing Lab Constitution
+# Scenario Lab Constitution
 
 ## Core Principles
 

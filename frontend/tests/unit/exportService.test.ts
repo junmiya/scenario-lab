@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createExportPayload, requestExport } from '../../src/services/exportService';
+import { createExportPayload } from '../../src/services/exportService';
 
 describe('exportService', () => {
   it('fails when required metadata is missing', () => {
@@ -8,23 +8,22 @@ describe('exportService', () => {
     );
   });
 
-  it('creates docx payload with sanitized filename', () => {
+  it('creates txt payload with sanitized filename', () => {
     const result = createExportPayload({ title: 'My Script!', authorName: 'A', content: 'body' });
-    expect(result.fileName).toBe('My_Script_.docx');
-    expect(result.mimeType).toContain(
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    );
+    expect(result.fileName).toBe('My_Script_.txt');
+    expect(result.mimeType).toBe('text/plain;charset=utf-8');
   });
 
-  it('uses local payload fallback when functions API is not configured', async () => {
-    const result = await requestExport({
-      documentId: 'doc-local',
-      title: 'Draft',
-      authorName: 'Writer',
-      content: 'body',
+  it('includes title and author in screenplay format', () => {
+    const result = createExportPayload({
+      title: 'テスト脚本',
+      authorName: '太郎',
+      content: '○場面１',
     });
 
-    expect(result.fileName).toBe('Draft.docx');
-    expect(result.content).toContain('Author: Writer');
+    expect(result.fileName).toBe('テスト脚本.txt');
+    expect(result.content).toContain('テスト脚本');
+    expect(result.content).toContain('作　太郎');
+    expect(result.content).toContain('○場面１');
   });
 });

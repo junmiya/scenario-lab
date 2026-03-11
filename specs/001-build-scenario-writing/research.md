@@ -1,4 +1,4 @@
-# Research: Scenario Writing Lab MVP
+# Research: Scenario Lab MVP
 
 ## Decision 1: Editing Experience Model
 

@@ -1,4 +1,4 @@
-# Data Model: Scenario Writing Lab MVP
+# Data Model: Scenario Lab MVP
 
 ## Entity: ScriptDocument
 

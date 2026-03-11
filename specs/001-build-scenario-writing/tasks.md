@@ -1,4 +1,4 @@
-# Tasks: Scenario Writing Lab MVP
+# Tasks: Scenario Lab MVP
 
 **Input**: Design documents from `/specs/001-build-scenario-writing/`
 **Prerequisites**: plan.md (required), spec.md (required), research.md, data-model.md, contracts/

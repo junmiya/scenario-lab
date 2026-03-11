@@ -1,4 +1,4 @@
-# Feature Specification: Scenario Writing Lab MVP
+# Feature Specification: Scenario Lab MVP
 
 **Feature Branch**: `001-build-scenario-writing`  
 **Created**: 2026-02-10  
