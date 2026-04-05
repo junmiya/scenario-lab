@@ -270,9 +270,18 @@ export async function createGroup(
 }
 
 export async function listMyGroups(uid: string): Promise<FirestoreGroup[]> {
-    const q = query(collection(db, 'groups'), where('memberIds', 'array-contains', uid));
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as FirestoreGroup);
+    // まず全グループを取得してデバッグ
+    const allSnap = await getDocs(collection(db, 'groups'));
+    console.log('[groups] all groups:', allSnap.docs.map(d => ({ id: d.id, memberIds: d.data().memberIds })));
+    // memberIds でフィルタ
+    const groups: FirestoreGroup[] = [];
+    for (const d of allSnap.docs) {
+        const data = d.data();
+        if (Array.isArray(data.memberIds) && data.memberIds.includes(uid)) {
+            groups.push({ id: d.id, ...data } as FirestoreGroup);
+        }
+    }
+    return groups;
 }
 
 export async function getGroup(groupId: string): Promise<FirestoreGroup | null> {
