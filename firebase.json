@@ -10,6 +10,7 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
+    "site": "scenariolab-studio",
     "public": "frontend/dist",
     "ignore": [
       "firebase.json",

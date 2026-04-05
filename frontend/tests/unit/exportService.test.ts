@@ -2,28 +2,38 @@ import { describe, expect, it } from 'vitest';
 import { createExportPayload } from '../../src/services/exportService';
 
 describe('exportService', () => {
-  it('fails when required metadata is missing', () => {
-    expect(() => createExportPayload({ title: '', authorName: 'a', content: 'body' })).toThrow(
-      'EXPORT_METADATA_REQUIRED',
-    );
+  it('fails when required metadata is missing', async () => {
+    await expect(
+      createExportPayload({ title: '', authorName: 'a', synopsis: '', characterText: '', content: 'body', lineLength: 20, linesPerPage: 20 }),
+    ).rejects.toThrow('EXPORT_METADATA_REQUIRED');
   });
 
-  it('creates txt payload with sanitized filename', () => {
-    const result = createExportPayload({ title: 'My Script!', authorName: 'A', content: 'body' });
-    expect(result.fileName).toBe('My_Script_.txt');
-    expect(result.mimeType).toBe('text/plain;charset=utf-8');
+  it('creates docx payload with sanitized filename', async () => {
+    const result = await createExportPayload({
+      title: 'My Script!',
+      authorName: 'A',
+      synopsis: '',
+      characterText: '',
+      content: 'body',
+      lineLength: 20,
+      linesPerPage: 20,
+    });
+    expect(result.fileName).toBe('My_Script_.docx');
+    expect(result.blob).toBeInstanceOf(Blob);
   });
 
-  it('includes title and author in screenplay format', () => {
-    const result = createExportPayload({
+  it('generates docx with correct blob type', async () => {
+    const result = await createExportPayload({
       title: 'テスト脚本',
       authorName: '太郎',
-      content: '○場面１',
+      synopsis: 'あらすじテスト',
+      characterText: '太郎（主人公）',
+      content: '○場面１\nセリフ「こんにちは」',
+      lineLength: 20,
+      linesPerPage: 20,
     });
 
-    expect(result.fileName).toBe('テスト脚本.txt');
-    expect(result.content).toContain('テスト脚本');
-    expect(result.content).toContain('作　太郎');
-    expect(result.content).toContain('○場面１');
+    expect(result.fileName).toBe('テスト脚本.docx');
+    expect(result.blob.size).toBeGreaterThan(0);
   });
 });

@@ -7,16 +7,19 @@ import {
     onAuthStateChanged,
     type User as FirebaseUser
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './config';
 
 const googleProvider = new GoogleAuthProvider();
+
+export type UserRole = 'system_admin' | 'operator' | 'teacher' | 'student' | 'evaluator';
 
 export interface UserProfile {
     uid: string;
     email: string | null;
     displayName: string | null;
     photoURL: string | null;
+    role: UserRole;
     createdAt?: any;
     updatedAt?: any;
 }
@@ -33,6 +36,7 @@ const syncUserWithFirestore = async (user: FirebaseUser) => {
             email: user.email,
             displayName: user.displayName,
             photoURL: user.photoURL,
+            role: 'student',
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
         };
@@ -88,4 +92,18 @@ export const signOut = async () => {
  */
 export const subscribeToAuthChanges = (callback: (user: FirebaseUser | null) => void) => {
     return onAuthStateChanged(auth, callback);
+};
+
+/**
+ * Subscribe to user profile changes (role updates etc.) in real-time.
+ */
+export const subscribeToUserProfile = (uid: string, callback: (profile: UserProfile | null) => void) => {
+    const userRef = doc(db, 'users', uid);
+    return onSnapshot(userRef, (snap) => {
+        if (snap.exists()) {
+            callback({ uid: snap.id, ...snap.data() } as UserProfile);
+        } else {
+            callback(null);
+        }
+    });
 };

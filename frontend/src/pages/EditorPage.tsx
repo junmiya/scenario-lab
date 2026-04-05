@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../components/ui/Layout';
 import { useAuth } from '../contexts/AuthContext';
-import { getScript, updateScript } from '../lib/firebase/firestoreService';
+import { getScript, updateScript, saveVersion, type ScriptVersion } from '../lib/firebase/firestoreService';
+import { useUndoRedo } from '../hooks/useUndoRedo';
+import { VersionHistory } from '../components/editor/VersionHistory';
+import { Undo2, Redo2 } from 'lucide-react';
 import { ContentCommentary, type ContentCommentaryCache } from '../components/advice/ContentCommentary';
 import { ExportPreview } from '../components/export/ExportPreview';
 import { SynopsisCommentary, type SynopsisCommentaryCache } from '../components/advice/SynopsisCommentary';
@@ -18,8 +21,12 @@ import {
   insertToolbarAction,
   type ToolbarAction,
 } from '../components/toolbar/ScriptToolbar';
-import { createExportPayload, savePayloadAs } from '../services/exportService';
+import { createExportPayload, createExportFromTemplate, savePayloadAs } from '../services/exportService';
 import { extractTextFromDocx } from '../services/importService';
+import { parseDocxTemplate } from '../services/templateParserService';
+import { createFormatPreset } from '../lib/firebase/firestoreService';
+import { FormatPresetSelector } from '../components/export/FormatPresetSelector';
+import type { FormatPreset } from '../types/formatPreset';
 import type { AiProvider } from '../lib/aiClient';
 import {
   createInitialEditorState,
@@ -61,6 +68,30 @@ export function EditorPage(): ReactElement {
   const [synopsisCommentaryCache, setSynopsisCommentaryCache] = useState<SynopsisCommentaryCache | undefined>(undefined);
   const editorRef = useRef<EditorHandle | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [versionRefreshKey, setVersionRefreshKey] = useState(0);
+  const [selectedPreset, setSelectedPreset] = useState<FormatPreset | null>(null);
+  const [presetRefreshKey, setPresetRefreshKey] = useState(0);
+  const templateInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Undo/Redo
+  const { undo, redo, canUndo, canRedo } = useUndoRedo(state, setState);
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+        if (e.shiftKey) {
+          e.preventDefault();
+          redo();
+        } else {
+          e.preventDefault();
+          undo();
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [undo, redo]);
 
   // Load script from Firestore if a route param is provided
   useEffect(() => {
@@ -120,6 +151,16 @@ export function EditorPage(): ReactElement {
         ...(synopsisCommentaryCache ? { synopsisCommentary: synopsisCommentaryCache } : {}),
         ...(discussionMessages.length > 0 ? { discussionMessages } : {}),
       });
+      // バージョン履歴にスナップショット保存
+      await saveVersion(routeScriptId, {
+        title: state.title,
+        authorName: state.authorName,
+        synopsis: state.synopsis,
+        content: state.content,
+        characterText: state.characterText,
+        settings: state.settings,
+      });
+      setVersionRefreshKey((k) => k + 1);
       setSaveMessage('保存しました');
       setTimeout(() => setSaveMessage(''), 2000);
     } catch (error) {
@@ -166,31 +207,87 @@ export function EditorPage(): ReactElement {
     }
   };
 
-  const onPreview = (): void => {
+  const onImportTemplate = async (file: File): Promise<void> => {
     try {
-      createExportPayload({
-        title: state.title || 'untitled-script',
-        authorName: state.authorName || 'unknown-author',
-        content: state.content,
-      });
-      setExportMessage('');
-      setExportPreview(state.content);
+      console.log('[template] parsing:', file.name, file.size, 'bytes');
+      setExportMessage('テンプレート解析中...');
+      const parsed = await parseDocxTemplate(file);
+      console.log('[template] parsed:', parsed);
+      const name = prompt('プリセット名を入力してください', file.name.replace(/\.docx$/i, ''));
+      if (!name || !user) {
+        setExportMessage('');
+        return;
+      }
+      await createFormatPreset(user.uid, { ...parsed, name });
+      setPresetRefreshKey((k) => k + 1);
+      setExportMessage(`プリセット「${name}」を保存しました（${parsed.lineLength ?? '?'}字×${parsed.linesPerPage ?? '?'}行）。ドロップダウンから選択して「適用」してください。`);
     } catch (error) {
-      setExportMessage(error instanceof Error ? error.message : String(error));
-      setExportPreview('');
+      setExportMessage(`テンプレート解析失敗: ${error instanceof Error ? error.message : String(error)}`);
     }
+  };
+
+  const onPresetSelect = (preset: FormatPreset | null): void => {
+    setSelectedPreset(preset);
+  };
+
+  const onPresetApply = (preset: FormatPreset): void => {
+    setSelectedPreset(preset);
+    const ll = preset.lineLength ?? 20;
+    const lpp = preset.linesPerPage ?? 20;
+    setState((current) => {
+      const s = updateSettings(current, { ...current.settings, lineLength: ll, linesPerPage: lpp });
+      s.synopsisSettings = { ...s.synopsisSettings, lineLength: ll, linesPerPage: lpp };
+      s.synopsisMetrics = recalculateGuideMetrics(s.synopsis, s.synopsisSettings);
+      s.characterSettings = { ...s.characterSettings, lineLength: ll, linesPerPage: lpp };
+      s.characterMetrics = recalculateGuideMetrics(s.characterText, s.characterSettings);
+      return s;
+    });
+    setExportMessage(`「${preset.name}」を適用しました（${ll}字×${lpp}行）`);
+  };
+
+  const onPresetReset = (): void => {
+    setSelectedPreset(null);
+    setState((current) => {
+      const s = updateSettings(current, { ...current.settings, lineLength: 20, linesPerPage: 20 });
+      s.synopsisSettings = { ...s.synopsisSettings, lineLength: 20, linesPerPage: 20 };
+      s.synopsisMetrics = recalculateGuideMetrics(s.synopsis, s.synopsisSettings);
+      s.characterSettings = { ...s.characterSettings, lineLength: 20, linesPerPage: 20 };
+      s.characterMetrics = recalculateGuideMetrics(s.characterText, s.characterSettings);
+      return s;
+    });
+    setExportMessage('標準設定（20×20）にリセットしました');
+  };
+
+  const onPreview = (): void => {
+    if (!state.title.trim() || !state.authorName.trim()) {
+      setExportMessage('タイトルと著者名を入力してください');
+      setExportPreview('');
+      return;
+    }
+    setExportMessage('');
+    setExportPreview(state.content);
   };
 
   const onDownload = async (): Promise<void> => {
     try {
-      const payload = createExportPayload({
+      setExportMessage('書き出し中...');
+      const exportInput = {
         title: state.title || 'untitled-script',
         authorName: state.authorName || 'unknown-author',
+        synopsis: state.synopsis,
+        characterText: state.characterText,
         content: state.content,
-      });
+        lineLength: state.settings.lineLength,
+        linesPerPage: state.settings.linesPerPage,
+      };
+      const payload = selectedPreset?.templateBase64
+        ? await createExportFromTemplate(exportInput, selectedPreset.templateBase64, selectedPreset.fieldMappings ?? [])
+        : await createExportPayload(exportInput);
       const savedName = await savePayloadAs(payload);
       if (savedName) {
         setExportMessage(`${savedName} を保存しました`);
+      } else {
+        setExportMessage('');
       }
     } catch (error) {
       setExportMessage(error instanceof Error ? error.message : String(error));
@@ -201,6 +298,27 @@ export function EditorPage(): ReactElement {
     <Layout
       headerTitle="脚本エディタ"
       headerActions={<>
+        <button type="button" onClick={undo} disabled={!canUndo} title="元に戻す (Cmd+Z)" style={{ padding: '0.375rem', backgroundColor: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', cursor: canUndo ? 'pointer' : 'default', opacity: canUndo ? 1 : 0.3, color: 'var(--text-secondary)' }}>
+          <Undo2 size={16} />
+        </button>
+        <button type="button" onClick={redo} disabled={!canRedo} title="やり直す (Cmd+Shift+Z)" style={{ padding: '0.375rem', backgroundColor: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', cursor: canRedo ? 'pointer' : 'default', opacity: canRedo ? 1 : 0.3, color: 'var(--text-secondary)' }}>
+          <Redo2 size={16} />
+        </button>
+        {routeScriptId && (
+          <div style={{ position: 'relative' }}>
+            <VersionHistory scriptId={routeScriptId} refreshKey={versionRefreshKey} onRestore={(v) => {
+              setState((current) => ({
+                ...current,
+                title: v.title,
+                authorName: v.authorName,
+                synopsis: v.synopsis,
+                content: v.content,
+                characterText: v.characterText,
+                settings: { ...current.settings, ...v.settings },
+              }));
+            }} />
+          </div>
+        )}
         {saveMessage && <span style={{ fontSize: '0.875rem', color: 'var(--color-success)' }}>{saveMessage}</span>}
         {routeScriptId && (
           <button type="button" className="btn-primary" onClick={() => void saveToFirestore()} style={{ fontWeight: 600 }}>
@@ -214,33 +332,56 @@ export function EditorPage(): ReactElement {
     >
       <main className="main-container">
 
-        {/* ── 作品情報 ── */}
-        <section className="section-container" aria-label="作品情報">
-          <h3>作品情報</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '3fr 3fr 1fr 1fr', gap: 'var(--space-md)', alignItems: 'end' }}>
-            <label>
-              タイトル
-              <input
+        {/* ── タイトル・著者 ── */}
+        <section className="section-container" aria-label="タイトル・著者">
+          <h3>タイトル・著者</h3>
+          <div style={{ display: 'flex', gap: 'var(--space-md)', direction: 'rtl' }}>
+            <div style={{ flex: 1, direction: 'ltr' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem' }}>タイトル</label>
+              <VerticalEditor
                 value={state.title}
-                onChange={(event) => {
-                  const val = event.currentTarget.value;
-                  setState((current) => ({ ...current, title: val }));
-                }}
-                placeholder="脚本タイトル"
+                onChange={(value) => setState((current) => ({ ...current, title: value }))}
+                lineCount={3}
+                charsPerColumn={state.settings.lineLength}
+                placeholder="タイトル"
               />
-            </label>
-            <label>
-              著者
-              <input
+            </div>
+            <div style={{ flex: 1, direction: 'ltr' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem' }}>著者</label>
+              <VerticalEditor
                 value={state.authorName}
-                onChange={(event) => {
-                  const val = event.currentTarget.value;
-                  setState((current) => ({ ...current, authorName: val }));
-                }}
+                onChange={(value) => setState((current) => ({ ...current, authorName: value }))}
+                lineCount={2}
+                charsPerColumn={state.settings.lineLength}
                 placeholder="著者名"
               />
-            </label>
-            <label>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 登場人物 ── */}
+        <section className="section-container" aria-label="登場人物">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3>登場人物</h3>
+            <Settings
+              value={state.characterSettings}
+              onChange={(value) => setState((current) => updateCharacterSettings(current, value))}
+              hideLineLength
+            />
+          </div>
+          <VerticalEditor
+            value={state.characterText}
+            onChange={(value) => setState((current) => updateCharacterText(current, value))}
+            lineCount={Math.max(5, state.characterMetrics.currentLines, state.characterSettings.pageCount * 20)}
+            charsPerColumn={state.characterSettings.lineLength}
+            placeholder="登場人物を入力..."
+          />
+          <p className="status-text" style={{ marginTop: 'var(--space-sm)' }}>
+            文字数: {characterContentLength} / 行数: {state.characterMetrics.currentLines} / 目安容量: {state.characterMetrics.totalCapacity}字 ({state.characterSettings.pageCount}枚) / 残り: {characterRemaining}字
+          </p>
+          {/* 設定（字数/行、行数/枚） */}
+          <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'end', marginTop: '0.75rem' }}>
+            <label style={{ fontSize: '0.8125rem' }}>
               字数/行
               <input
                 type="number"
@@ -260,9 +401,10 @@ export function EditorPage(): ReactElement {
                     return s;
                   });
                 }}
+                style={{ width: '4rem' }}
               />
             </label>
-            <label>
+            <label style={{ fontSize: '0.8125rem' }}>
               行数/枚
               <input
                 type="number"
@@ -282,12 +424,13 @@ export function EditorPage(): ReactElement {
                     return s;
                   });
                 }}
+                style={{ width: '4rem' }}
               />
             </label>
+            <span style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)' }}>
+              1枚 = {state.settings.lineLength}字 × {state.settings.linesPerPage}行 = {state.settings.lineLength * state.settings.linesPerPage}字
+            </span>
           </div>
-          <p style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-            1枚 = {state.settings.lineLength}字 × {state.settings.linesPerPage}行 = {state.settings.lineLength * state.settings.linesPerPage}字
-          </p>
         </section>
 
         {/* ── あらすじ ── */}
@@ -440,26 +583,6 @@ export function EditorPage(): ReactElement {
           </ContentCommentary>
         </section>
 
-        {/* ── 登場人物 ── */}
-        <section className="section-container" aria-label="登場人物">
-          <h3>登場人物</h3>
-          <Settings
-            value={state.characterSettings}
-            onChange={(value) => setState((current) => updateCharacterSettings(current, value))}
-            hideLineLength
-          />
-          <VerticalEditor
-            value={state.characterText}
-            onChange={(value) => setState((current) => updateCharacterText(current, value))}
-            lineCount={Math.max(5, state.characterMetrics.currentLines, state.characterSettings.pageCount * 20)}
-            charsPerColumn={state.characterSettings.lineLength}
-            placeholder="登場人物を入力..."
-          />
-          <p className="status-text" style={{ marginTop: 'var(--space-sm)' }}>
-            文字数: {characterContentLength} / 行数: {state.characterMetrics.currentLines} / 目安容量: {state.characterMetrics.totalCapacity}字 ({state.characterSettings.pageCount}枚) / 残り: {characterRemaining}字
-          </p>
-        </section>
-
         {/* ── AI採点者議論 ── */}
         <section className="section-container" aria-label="AI採点者議論">
           <h3>AI採点者議論</h3>
@@ -493,6 +616,30 @@ export function EditorPage(): ReactElement {
                 e.currentTarget.value = '';
               }}
             />
+            <button type="button" onClick={() => templateInputRef.current?.click()}>
+              テンプレート読み込み
+            </button>
+            <input
+              ref={templateInputRef}
+              type="file"
+              accept=".docx"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.currentTarget.files?.[0];
+                if (file) void onImportTemplate(file);
+                e.currentTarget.value = '';
+              }}
+            />
+            {user && (
+              <FormatPresetSelector
+                userId={user.uid}
+                selectedPresetId={selectedPreset?.id ?? null}
+                onSelect={onPresetSelect}
+                onApply={onPresetApply}
+                onReset={onPresetReset}
+                refreshKey={presetRefreshKey}
+              />
+            )}
             <button type="button" onClick={onPreview}>
               書き出しプレビュー
             </button>
@@ -512,6 +659,8 @@ export function EditorPage(): ReactElement {
               <ExportPreview
                 title={state.title}
                 authorName={state.authorName}
+                synopsis={state.synopsis}
+                characterText={state.characterText}
                 content={exportPreview}
                 charsPerColumn={state.settings.lineLength}
                 columnsPerPage={state.settings.linesPerPage}

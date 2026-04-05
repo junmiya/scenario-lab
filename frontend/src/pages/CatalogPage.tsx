@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Layout } from '../components/ui/Layout';
 import { listScripts, createScript, deleteScript, type FirestoreScript } from '../lib/firebase/firestoreService';
-import { Plus, FileText, Trash2, Clock } from 'lucide-react';
+import { Plus, FileText, Trash2, Clock, Send } from 'lucide-react';
+import { SubmitToGroupDialog } from '../components/groups/SubmitToGroupDialog';
 
 export function CatalogPage(): ReactElement {
     const { user } = useAuth();
@@ -11,6 +12,7 @@ export function CatalogPage(): ReactElement {
     const [scripts, setScripts] = useState<FirestoreScript[]>([]);
     const [loading, setLoading] = useState(true);
     const [creating, setCreating] = useState(false);
+    const [submitTarget, setSubmitTarget] = useState<{ id: string; title: string } | null>(null);
 
     useEffect(() => {
         if (!user) return;
@@ -175,22 +177,36 @@ export function CatalogPage(): ReactElement {
                                     }}>
                                         {script.title || '(無題)'}
                                     </h3>
-                                    <button
-                                        onClick={(e) => void handleDelete(script.id, e)}
-                                        style={{
-                                            padding: '0.25rem',
-                                            borderRadius: 'var(--radius-sm)',
-                                            backgroundColor: 'transparent',
-                                            border: 'none',
-                                            color: 'var(--text-secondary)',
-                                            cursor: 'pointer',
-                                            flexShrink: 0,
-                                            marginLeft: '0.5rem',
-                                        }}
-                                        title="削除"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0, marginLeft: '0.5rem' }}>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setSubmitTarget({ id: script.id, title: script.title }); }}
+                                            style={{
+                                                padding: '0.25rem',
+                                                borderRadius: 'var(--radius-sm)',
+                                                backgroundColor: 'transparent',
+                                                border: 'none',
+                                                color: 'var(--text-secondary)',
+                                                cursor: 'pointer',
+                                            }}
+                                            title="グループに提出"
+                                        >
+                                            <Send size={16} />
+                                        </button>
+                                        <button
+                                            onClick={(e) => void handleDelete(script.id, e)}
+                                            style={{
+                                                padding: '0.25rem',
+                                                borderRadius: 'var(--radius-sm)',
+                                                backgroundColor: 'transparent',
+                                                border: 'none',
+                                                color: 'var(--text-secondary)',
+                                                cursor: 'pointer',
+                                            }}
+                                            title="削除"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
                                 </div>
                                 <p style={{
                                     fontSize: '0.8125rem',
@@ -216,6 +232,15 @@ export function CatalogPage(): ReactElement {
                             </div>
                         ))}
                     </div>
+                )}
+                {/* 提出ダイアログ */}
+                {submitTarget && (
+                    <SubmitToGroupDialog
+                        scriptId={submitTarget.id}
+                        scriptTitle={submitTarget.title}
+                        onClose={() => setSubmitTarget(null)}
+                        onSubmitted={() => setSubmitTarget(null)}
+                    />
                 )}
             </div>
         </Layout>

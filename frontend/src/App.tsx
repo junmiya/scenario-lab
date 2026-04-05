@@ -1,9 +1,19 @@
 import type { ReactElement } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider, useAuth, useUserRole } from './contexts/AuthContext';
+import { FeatureFlagsProvider } from './contexts/FeatureFlagsContext';
 import { LoginPage } from './pages/LoginPage';
 import { CatalogPage } from './pages/CatalogPage';
 import { EditorPage } from './pages/EditorPage';
+import { AdminUsersPage } from './pages/AdminUsersPage';
+import { GroupListPage } from './pages/GroupListPage';
+import { GroupDetailPage } from './pages/GroupDetailPage';
+import { SubmissionViewPage } from './pages/SubmissionViewPage';
+import { CorrectionPage } from './pages/CorrectionPage';
+import { ContestListPage } from './pages/ContestListPage';
+import { ContestCreatePage } from './pages/ContestCreatePage';
+import { ContestDetailPage } from './pages/ContestDetailPage';
+import { ContestEntryPage } from './pages/ContestEntryPage';
 
 function ProtectedRoute({ children }: { children: ReactElement }): ReactElement {
   const { user, loading } = useAuth();
@@ -23,10 +33,21 @@ function ProtectedRoute({ children }: { children: ReactElement }): ReactElement 
   return children;
 }
 
+function AdminRoute({ children }: { children: ReactElement }): ReactElement {
+  const role = useUserRole();
+
+  if (role !== 'system_admin') {
+    return <Navigate to="/catalog" replace />;
+  }
+
+  return children;
+}
+
 export function App(): ReactElement {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <FeatureFlagsProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
@@ -53,8 +74,67 @@ export function App(): ReactElement {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute>
+                <AdminRoute>
+                  <AdminUsersPage />
+                </AdminRoute>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/groups"
+            element={
+              <ProtectedRoute>
+                <GroupListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/groups/:groupId"
+            element={
+              <ProtectedRoute>
+                <GroupDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/groups/:groupId/submissions/:submissionId"
+            element={
+              <ProtectedRoute>
+                <SubmissionViewPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/contests"
+            element={<ProtectedRoute><ContestListPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/contests/new"
+            element={<ProtectedRoute><ContestCreatePage /></ProtectedRoute>}
+          />
+          <Route
+            path="/contests/:contestId"
+            element={<ProtectedRoute><ContestDetailPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/contests/:contestId/entries/:entryId"
+            element={<ProtectedRoute><ContestEntryPage /></ProtectedRoute>}
+          />
+          <Route
+            path="/groups/:groupId/submissions/:submissionId/corrections"
+            element={
+              <ProtectedRoute>
+                <CorrectionPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<Navigate to="/catalog" replace />} />
         </Routes>
+        </FeatureFlagsProvider>
       </AuthProvider>
     </BrowserRouter>
   );
