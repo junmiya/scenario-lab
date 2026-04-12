@@ -103,7 +103,7 @@ function parseParagraphs(doc: Document): ParagraphInfo[] {
   return result;
 }
 
-function detectFieldMappings(doc: Document): FieldMapping[] {
+export function detectFieldMappings(doc: Document): FieldMapping[] {
   const paragraphs = parseParagraphs(doc);
   const mappings: FieldMapping[] = [];
   const usedFields = new Set<MappedField>();

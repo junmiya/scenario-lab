@@ -145,6 +145,7 @@ export async function createExportPayload(input: ExportInput): Promise<ExportPay
 // ────────────────────────────────────────
 
 import type { FieldMapping, MappedField } from '../types/formatPreset';
+import { detectFieldMappings } from './templateParserService';
 
 const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
@@ -187,13 +188,22 @@ function collectParagraphs(body: Element): ParagraphEntry[] {
 }
 
 /** 段落のテキスト run を差し替える（pPr の style や sectPr は保持） */
-function replaceParagraphText(p: Element, text: string, doc: XMLDocument): void {
+function replaceParagraphText(p: Element, text: string, doc: XMLDocument, font?: string): void {
   // 既存の run を全削除
   const runs = Array.from(p.getElementsByTagNameNS(W_NS, 'r'));
   for (const r of runs) p.removeChild(r);
 
-  // 新しい run を追加（テンプレートのフォント情報は pPr/rPr から継承される）
+  // 新しい run を追加
   const r = doc.createElementNS(W_NS, 'w:r');
+  if (font) {
+    const rPr = doc.createElementNS(W_NS, 'w:rPr');
+    const rFonts = doc.createElementNS(W_NS, 'w:rFonts');
+    rFonts.setAttribute('w:eastAsia', font);
+    rFonts.setAttribute('w:ascii', font);
+    rFonts.setAttribute('w:hAnsi', font);
+    rPr.appendChild(rFonts);
+    r.appendChild(rPr);
+  }
   const t = doc.createElementNS(W_NS, 'w:t');
   t.setAttribute('xml:space', 'preserve');
   t.textContent = text;
@@ -202,13 +212,14 @@ function replaceParagraphText(p: Element, text: string, doc: XMLDocument): void 
 }
 
 /** テキストを複数段落として段落の後に挿入 */
-function insertLinesAfter(refPara: Element, lines: string[], doc: XMLDocument, body: Element): void {
+function insertLinesAfter(refPara: Element, lines: string[], doc: XMLDocument, body: Element, font?: string): void {
   const parser = new DOMParser();
   let insertBefore = refPara.nextSibling;
 
   for (const line of lines) {
     const escaped = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const xml = `<w:p xmlns:w="${W_NS}"><w:r><w:t xml:space="preserve">${escaped || '\u3000'}</w:t></w:r></w:p>`;
+    const rPr = font ? `<w:rPr><w:rFonts w:eastAsia="${font}" w:ascii="${font}" w:hAnsi="${font}"/></w:rPr>` : '';
+    const xml = `<w:p xmlns:w="${W_NS}"><w:r>${rPr}<w:t xml:space="preserve">${escaped || '\u3000'}</w:t></w:r></w:p>`;
     const tmpDoc = parser.parseFromString(`<root xmlns:w="${W_NS}">${xml}</root>`, 'application/xml');
     const imported = doc.importNode(tmpDoc.documentElement.firstChild!, true);
     if (insertBefore) {
@@ -216,29 +227,32 @@ function insertLinesAfter(refPara: Element, lines: string[], doc: XMLDocument, b
     } else {
       body.appendChild(imported);
     }
-    // 次の挿入は今追加したノードの後
     insertBefore = imported.nextSibling;
   }
 }
 
 /** セクション内のマッピング対象以外の段落を全削除して content で埋める */
-function fillSection(sectionIndex: number, lines: string[], paragraphs: ParagraphEntry[], doc: XMLDocument, body: Element): void {
+function fillSection(sectionIndex: number, lines: string[], paragraphs: ParagraphEntry[], doc: XMLDocument, body: Element, font?: string): void {
   const sectionParas = paragraphs.filter((p) => p.sectionIndex === sectionIndex && !p.hasSectPr);
 
-  // 最初の段落の前に挿入する位置を記録
+  // 削除前に、挿入位置の参照先を確保（最初の段落の前の兄弟ノード or セクション区切り段落）
   const firstPara = sectionParas[0];
-  const insertBefore = firstPara?.element ?? null;
+  const refNode = firstPara?.element.previousSibling;
 
   // 既存段落を削除
   for (const p of sectionParas) {
     body.removeChild(p.element);
   }
 
+  // 挿入位置: refNode の次（= 元の最初の段落があった位置）
+  const insertBefore = refNode ? refNode.nextSibling : body.firstChild;
+
   // 新しいコンテンツを挿入
   const parser = new DOMParser();
   for (const line of lines) {
     const escaped = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const xml = `<w:p xmlns:w="${W_NS}"><w:r><w:t xml:space="preserve">${escaped || '\u3000'}</w:t></w:r></w:p>`;
+    const rPr = font ? `<w:rPr><w:rFonts w:eastAsia="${font}" w:ascii="${font}" w:hAnsi="${font}"/></w:rPr>` : '';
+    const xml = `<w:p xmlns:w="${W_NS}"><w:r>${rPr}<w:t xml:space="preserve">${escaped || '\u3000'}</w:t></w:r></w:p>`;
     const tmpDoc = parser.parseFromString(`<root xmlns:w="${W_NS}">${xml}</root>`, 'application/xml');
     const imported = doc.importNode(tmpDoc.documentElement.firstChild!, true);
     if (insertBefore) {
@@ -274,6 +288,15 @@ export async function createExportFromTemplate(
 
   const paragraphs = collectParagraphs(body);
 
+  // テンプレートからフォント情報を抽出（最初に見つかった rFonts を使用）
+  let templateFont = 'ＭＳ 明朝';
+  const allRFonts = xmlDoc.getElementsByTagNameNS(W_NS, 'rFonts');
+  for (let i = 0; i < allRFonts.length; i++) {
+    const ea = allRFonts[i]!.getAttribute('w:eastAsia') ?? '';
+    if (ea) { templateFont = ea; break; }
+  }
+  console.log('[export-template] font:', templateFont);
+
   // フィールド値のマップ
   const fieldValues: Record<MappedField, string> = {
     title: input.title,
@@ -282,6 +305,12 @@ export async function createExportFromTemplate(
     synopsis: input.synopsis,
     content: input.content,
   };
+
+  // fieldMappings が空（古いプリセット等）ならテンプレートから自動検出
+  if (fieldMappings.length === 0) {
+    fieldMappings = detectFieldMappings(xmlDoc);
+    console.log('[export-template] auto-detected mappings:', fieldMappings);
+  }
 
   console.log('[export-template] applying', fieldMappings.length, 'mappings');
 
@@ -303,10 +332,19 @@ export async function createExportFromTemplate(
     if (!value.trim()) continue;
 
     if (mapping.action === 'replace') {
-      replaceParagraphText(para.element, value, xmlDoc);
+      replaceParagraphText(para.element, value, xmlDoc, templateFont);
     } else if (mapping.action === 'insertAfter') {
       const lines = value.split('\n');
-      insertLinesAfter(para.element, lines, xmlDoc, body as Element);
+      insertLinesAfter(para.element, lines, xmlDoc, body as Element, templateFont);
+      // insertAfter の次の段落がプレースホルダーならテキストをクリア（sectPr は保持）
+      const nextPara = paragraphs.find(
+        (p) => p.sectionIndex === mapping.sectionIndex && p.paragraphIndex === mapping.paragraphIndex + 1,
+      );
+      if (nextPara && nextPara.hasSectPr) {
+        replaceParagraphText(nextPara.element, '', xmlDoc, templateFont);
+      } else if (nextPara && !nextPara.hasSectPr) {
+        (body as Element).removeChild(nextPara.element);
+      }
     }
   }
 
@@ -317,7 +355,7 @@ export async function createExportFromTemplate(
     if (input.synopsis.trim() && !fieldMappings.some((m) => m.field === 'synopsis')) {
       lines.unshift('', 'あらすじ', '', ...input.synopsis.split('\n'), '');
     }
-    fillSection(contentMapping.sectionIndex, lines, paragraphs, xmlDoc, body as Element);
+    fillSection(contentMapping.sectionIndex, lines, paragraphs, xmlDoc, body as Element, templateFont);
   }
 
   // シリアライズして書き戻し
