@@ -632,3 +632,48 @@ export async function listFormatPresets(ownerId: string): Promise<FormatPreset[]
 export async function deleteFormatPreset(presetId: string): Promise<void> {
     await deleteDoc(doc(db, 'formatPresets', presetId));
 }
+
+// ────────────────────────────────────────
+// 管理ダッシュボード
+// ────────────────────────────────────────
+
+export interface AdminStats {
+    userCount: number;
+    scriptCount: number;
+    groupCount: number;
+    submissionCount: number;
+    roleBreakdown: Record<string, number>;
+}
+
+export async function getAdminStats(): Promise<AdminStats> {
+    const [usersSnap, scriptsSnap, groupsSnap, submissionsSnap] = await Promise.all([
+        getDocs(collection(db, 'users')),
+        getDocs(collection(db, 'scripts')),
+        getDocs(collection(db, 'groups')),
+        getDocs(collectionGroup(db, 'submissions')),
+    ]);
+
+    const roleBreakdown: Record<string, number> = {};
+    usersSnap.docs.forEach((d) => {
+        const role = (d.data().role as string) || 'student';
+        roleBreakdown[role] = (roleBreakdown[role] || 0) + 1;
+    });
+
+    return {
+        userCount: usersSnap.size,
+        scriptCount: scriptsSnap.size,
+        groupCount: groupsSnap.size,
+        submissionCount: submissionsSnap.size,
+        roleBreakdown,
+    };
+}
+
+export async function listAllGroups(): Promise<FirestoreGroup[]> {
+    const q = query(collection(db, 'groups'), orderBy('createdAt', 'desc'));
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as FirestoreGroup);
+}
+
+export async function deleteGroup(groupId: string): Promise<void> {
+    await deleteDoc(doc(db, 'groups', groupId));
+}
