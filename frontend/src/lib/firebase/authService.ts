@@ -70,7 +70,8 @@ export const signInWithGoogle = async () => {
             await syncUserWithFirestore(result.user);
         }
     } catch (error: unknown) {
-        if (error instanceof Error && 'code' in error && (error as any).code === 'auth/popup-blocked') {
+        const code = error instanceof Error && 'code' in error ? (error as any).code : '';
+        if (code === 'auth/popup-blocked' || code === 'auth/popup-closed-by-user') {
             await signInWithRedirect(auth, googleProvider);
             return;
         }

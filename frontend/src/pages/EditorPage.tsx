@@ -14,6 +14,10 @@ import { SynopsisCommentary, type SynopsisCommentaryCache } from '../components/
 import { DiscussionPanel, type DiscussionMessage } from '../components/advice/DiscussionPanel';
 import { Settings } from '../components/editor/Settings';
 import { VerticalEditor, type EditorHandle } from '../components/editor/VerticalEditor';
+import { VerticalEditorV2 } from '../components/editor/VerticalEditorV2';
+
+// V2 エディタ切り替えフラグ（開発中: false = V1, true = V2）
+const USE_V2_EDITOR = true;
 import type { StructureSegment } from '../components/structure/StructurePanel';
 import {
   ScriptToolbar,
@@ -569,14 +573,25 @@ export function EditorPage(): ReactElement {
                 })}
               </div>
             )}
-            <VerticalEditor
-              ref={editorRef}
-              value={state.content}
-              onChange={(value) => setState((current) => updateContent(current, value))}
-              lineCount={Math.max(state.metrics.currentLines, state.settings.pageCount * 20)}
-              charsPerColumn={state.settings.lineLength}
-              placeholder="ここに脚本本文を入力..."
-            />
+            {USE_V2_EDITOR ? (
+              <VerticalEditorV2
+                ref={editorRef}
+                value={state.content}
+                onChange={(value) => setState((current) => updateContent(current, value))}
+                lineCount={Math.max(state.metrics.currentLines, state.settings.pageCount * 20)}
+                charsPerColumn={state.settings.lineLength}
+                placeholder="ここに脚本本文を入力..."
+              />
+            ) : (
+              <VerticalEditor
+                ref={editorRef}
+                value={state.content}
+                onChange={(value) => setState((current) => updateContent(current, value))}
+                lineCount={Math.max(state.metrics.currentLines, state.settings.pageCount * 20)}
+                charsPerColumn={state.settings.lineLength}
+                placeholder="ここに脚本本文を入力..."
+              />
+            )}
             <p className="status-text" style={{ marginTop: 'var(--space-sm)' }}>
               文字数: {contentLength} / 行数: {state.metrics.currentLines} / 目安容量: {state.metrics.totalCapacity}字 ({state.settings.pageCount}枚) / 残り: {remaining}字
             </p>

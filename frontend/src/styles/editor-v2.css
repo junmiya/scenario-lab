@@ -1,0 +1,184 @@
+/* VerticalEditorV2 — hidden textarea + display layer architecture */
+
+.v2-editor-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-primary);
+  box-sizing: border-box;
+  position: relative;
+}
+
+.v2-editor-container.v2-focused {
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px rgb(74 85 104 / 10%);
+}
+
+/* Hidden textarea — captures all input/IME */
+.v2-hidden-textarea {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  /* Keep in DOM for IME */
+  z-index: -1;
+}
+
+/* Scroll area */
+.v2-scroll-area {
+  width: 100%;
+  overflow-x: scroll;
+  overflow-y: hidden;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.v2-scroll-area::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+  background-color: var(--color-bg-secondary);
+}
+
+.v2-scroll-area::-webkit-scrollbar-track {
+  background-color: var(--color-bg-secondary);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.v2-scroll-area::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 6px;
+  border: 2px solid var(--color-bg-secondary);
+}
+
+/* Display layer — read-only visual rendering */
+.v2-display {
+  position: relative;
+  writing-mode: vertical-rl;
+  font-family: var(--font-editor);
+  font-size: var(--text-base);
+  line-height: var(--editor-line-height);
+  padding: var(--space-lg);
+  box-sizing: border-box;
+  cursor: text;
+  user-select: none;
+  /* Grid background */
+  background-image: repeating-linear-gradient(
+    to left,
+    transparent 0,
+    transparent 1lh,
+    #fbfcff 1lh,
+    #fbfcff 2lh
+  );
+  background-origin: content-box;
+}
+
+/* Each column (line) */
+.v2-column {
+  display: inline;
+  /* Characters flow vertically within column */
+}
+
+/* Each character */
+.v2-char {
+  text-orientation: upright;
+}
+
+.v2-char-empty {
+  color: transparent;
+}
+
+/* Placeholder */
+.v2-placeholder {
+  position: absolute;
+  top: var(--space-lg);
+  right: var(--space-lg);
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+  text-orientation: upright;
+}
+
+/* Cursor overlay */
+.v2-cursor {
+  position: absolute;
+  width: 2px;
+  height: 1em;
+  background: var(--text-primary, #1a202c);
+  pointer-events: none;
+  z-index: 10;
+  animation: v2-blink 1s step-end infinite;
+
+  /* Position calculated from CSS custom properties */
+  top: calc(var(--space-lg) + var(--cursor-row) * 1em);
+  right: calc(var(--space-lg) + var(--cursor-col) * 1lh);
+}
+
+@keyframes v2-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Selection highlight */
+.v2-selection {
+  position: absolute;
+  width: 1lh;
+  height: 1em;
+  background: rgba(59, 130, 246, 0.25);
+  pointer-events: none;
+  z-index: 5;
+
+  top: calc(var(--space-lg) + var(--cursor-row) * 1em);
+  right: calc(var(--space-lg) + var(--cursor-col) * 1lh);
+}
+
+/* IME composition overlay */
+.v2-composition {
+  position: absolute;
+  pointer-events: none;
+  z-index: 15;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  text-decoration: underline;
+  text-decoration-color: var(--text-primary);
+
+  top: calc(var(--space-lg) + var(--cursor-row) * 1em);
+  right: calc(var(--space-lg) + var(--cursor-col) * 1lh);
+}
+
+/* Ruler */
+.v2-ruler {
+  display: block;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  overflow: hidden;
+  width: 100%;
+  height: 28px;
+  padding: 4px var(--space-lg);
+  font-family: var(--font-base);
+  font-size: var(--text-base);
+  line-height: var(--editor-line-height);
+  color: var(--color-text-tertiary);
+  box-sizing: border-box;
+  user-select: none;
+  background-image: repeating-linear-gradient(
+    to left,
+    transparent 0,
+    transparent 1lh,
+    #fbfcff 1lh,
+    #fbfcff 2lh
+  );
+  background-origin: content-box;
+}
+
+.v2-ruler span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 1lh;
+  font-size: 0.625rem;
+  text-orientation: mixed;
+}
