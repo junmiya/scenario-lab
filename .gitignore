@@ -64,3 +64,7 @@ scenario_service_spec.md
 
 # Logs
 *.log
+
+# Local artifacts
+ScreenShot/
+test-outputs/
