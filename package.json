@@ -1,5 +1,5 @@
 {
-  "name": "scenario-writing-lab",
+  "name": "scenario-lab",
   "private": true,
   "version": "0.1.0",
   "workspaces": [
@@ -7,10 +7,10 @@
     "functions"
   ],
   "scripts": {
-    "dev:frontend": "npm run --workspace @scenario-writing-lab/frontend dev",
-    "dev:functions": "npm run --workspace @scenario-writing-lab/functions dev",
-    "build:frontend": "npm run --workspace @scenario-writing-lab/frontend build",
-    "build:functions": "npm run --workspace @scenario-writing-lab/functions build",
+    "dev:frontend": "npm run --workspace @scenario-lab/frontend dev",
+    "dev:functions": "npm run --workspace @scenario-lab/functions dev",
+    "build:frontend": "npm run --workspace @scenario-lab/frontend build",
+    "build:functions": "npm run --workspace @scenario-lab/functions build",
     "build": "npm run build:frontend && npm run build:functions",
     "deploy:precheck": "bash scripts/deploy/precheck.sh",
     "deploy:firebase": "firebase deploy --config firebase.json",

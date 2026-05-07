@@ -147,7 +147,7 @@ export async function routeApiRequest(req: ApiRequest): Promise<ApiResponse> {
   if (method === 'GET' && path === '/health') {
     return jsonResponse(200, {
       status: 'ok',
-      service: 'scenario-writing-lab-functions',
+      service: 'scenario-lab-functions',
     });
   }
 
