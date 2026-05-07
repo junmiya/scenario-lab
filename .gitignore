@@ -22,7 +22,7 @@ functions/lib/
 .adal/
 .agent/
 .augment/
-.claude/skills/
+# .claude/skills/ — tracked for speckit skills
 .cline/
 .codebuddy/
 .codex/

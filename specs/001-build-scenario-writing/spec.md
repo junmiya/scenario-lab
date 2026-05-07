@@ -71,7 +71,8 @@ pre/post revisions, and exports a file that preserves required formatting.
 
 ### Edge Cases
 
-- What happens when AI provider response fails or times out during advice generation?
+- When an AI provider response fails or times out, the affected panel displays an error
+  message with a retry button; the other panel continues to display its result independently.
 - How does the system handle save conflicts from two sessions editing the same document?
 - What happens when users attempt export with incomplete required metadata (title/author)?
 - How does the system handle character references that were deleted from the character list?
@@ -81,23 +82,29 @@ pre/post revisions, and exports a file that preserves required formatting.
 
 ### Functional Requirements
 
-- **FR-001**: System MUST require authentication before document access.
+- **FR-001**: System MUST require authentication via Firebase Authentication (Google sign-in
+  and email/password) before document access.
 - **FR-002**: System MUST allow users to create, open, update, and list script documents.
 - **FR-003**: System MUST support vertical writing mode for screenplay editing.
 - **FR-004**: System MUST provide format helper actions for screenplay structures
   (scene heading, action, dialogue, brackets/quotes).
 - **FR-005**: System MUST allow users to adjust line-length and page-size guidance settings.
-- **FR-006**: System MUST save synopsis, script body, character table, and layout settings.
-- **FR-007**: System MUST isolate document access so users can access only their own data.
+- **FR-006**: System MUST save synopsis, script body, character table, and layout settings
+  to Cloud Firestore as the persistence backend.
+- **FR-007**: System MUST isolate document access so users can access only their own data,
+  enforced via Firestore security rules scoped to authenticated user IDs.
 - **FR-008**: System MUST support character table management (add/edit/remove entries).
-- **FR-009**: System MUST generate dual advice panels from current writing context.
-- **FR-010**: System MUST allow independent model selection per advice panel.
+- **FR-009**: System MUST generate dual advice panels from current writing context via a
+  unified provider response contract supporting multiple AI providers (e.g., OpenAI,
+  Anthropic) as well as single-provider multi-model configurations.
+- **FR-010**: System MUST allow independent model/provider selection per advice panel.
 - **FR-011**: System MUST allow users to customize and save advice tone presets.
 - **FR-012**: System MUST support partial advice for selected text with full-context support.
 - **FR-013**: System MUST display writing progress indicators (character count/page progress).
 - **FR-014**: System MUST provide structure mapping guidance tied to synopsis and draft state.
 - **FR-015**: System MUST provide revision comparison between before/after edits.
-- **FR-016**: System MUST export script content to a downloadable document format.
+- **FR-016**: System MUST export script content to downloadable PDF and Word (.docx) formats,
+  preserving screenplay formatting intent in both outputs.
 - **FR-017**: System MUST log operational failures for save, advice generation, and export
   with actionable diagnostic context.
 - **FR-018**: System MUST define rollback actions for any release that changes document data
@@ -126,6 +133,16 @@ pre/post revisions, and exports a file that preserves required formatting.
   panel model choices, preset/tone inputs, and generated feedback.
 - **StructureMap**: Mapping artifact linking synopsis segments and current draft regions to
   high-level narrative structure positions.
+
+## Clarifications
+
+### Session 2026-02-19
+
+- Q: MVP のデュアルアドバイスパネルで対応すべき AI プロバイダーは？ → A: 2プロバイダー対応（例：OpenAI + Anthropic）を統一レスポンス契約で接続。単一プロバイダーの2モデル構成も選択可能とする。
+- Q: AI アドバイス生成が失敗またはタイムアウトした場合の対処は？ → A: 失敗パネルのみにエラー表示＋再試行ボタンを表示し、もう一方のパネルは独立して正常表示を維持する。
+- Q: MVP のエクスポート形式は？ → A: PDF + Word (.docx) の2形式を対応する。
+- Q: MVP のデータ永続化のストレージ戦略は？ → A: Cloud Firestore をバックエンドとして使用する。
+- Q: MVP の認証方式は？ → A: Firebase Authentication（Google ログイン + メール/パスワード）を採用する。
 
 ## Success Criteria *(mandatory)*
 
