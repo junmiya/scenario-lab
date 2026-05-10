@@ -14,6 +14,7 @@ import { ContestListPage } from './pages/ContestListPage';
 import { ContestCreatePage } from './pages/ContestCreatePage';
 import { ContestDetailPage } from './pages/ContestDetailPage';
 import { ContestEntryPage } from './pages/ContestEntryPage';
+import { ReleaseNotesPage } from './pages/ReleaseNotesPage';
 
 function ProtectedRoute({ children }: { children: ReactElement }): ReactElement {
   const { user, loading } = useAuth();
@@ -129,6 +130,14 @@ export function App(): ReactElement {
             element={
               <ProtectedRoute>
                 <CorrectionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/release-notes"
+            element={
+              <ProtectedRoute>
+                <ReleaseNotesPage />
               </ProtectedRoute>
             }
           />

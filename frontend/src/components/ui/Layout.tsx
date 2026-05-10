@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
 import { useAuth, useUserRole } from '../../contexts/AuthContext';
 import { useFeatureFlags } from '../../contexts/FeatureFlagsContext';
-import { LogOut, FileText, Users, Shield, Trophy } from 'lucide-react';
+import { LogOut, FileText, Users, Shield, Trophy, Sparkles } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -35,6 +35,7 @@ export function Layout({ children, headerTitle, headerActions }: LayoutProps) {
         { path: '/groups', label: 'グループ', icon: <Users size={16} />, show: flags.groups },
         { path: '/contests', label: 'コンテスト', icon: <Trophy size={16} />, show: flags.contests },
         { path: '/admin/users', label: '管理', icon: <Shield size={16} />, show: role === 'system_admin' },
+        { path: '/release-notes', label: 'リリースノート', icon: <Sparkles size={16} />, show: true },
     ];
 
     return (
