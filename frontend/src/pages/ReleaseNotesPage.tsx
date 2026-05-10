@@ -196,7 +196,7 @@ export function ReleaseNotesPage(): ReactElement {
                 >
                     詳細な変更履歴は{' '}
                     <a
-                        href="https://github.com/junmiya/writinglab/blob/main/CHANGELOG.md"
+                        href="https://github.com/junmiya/scenario-lab/blob/main/CHANGELOG.md"
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ color: 'var(--text-secondary)' }}
