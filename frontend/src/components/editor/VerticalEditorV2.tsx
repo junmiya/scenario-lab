@@ -1,6 +1,13 @@
 import {
-  useEffect, useRef, useCallback, useImperativeHandle, forwardRef, useState, useMemo,
-  type Ref, type MouseEvent as ReactMouseEvent,
+  useEffect,
+  useRef,
+  useCallback,
+  useImperativeHandle,
+  forwardRef,
+  useState,
+  useMemo,
+  type Ref,
+  type MouseEvent as ReactMouseEvent,
 } from 'react';
 import type { EditorHandle } from './VerticalEditor';
 import './../../styles/editor-v2.css';
@@ -96,21 +103,29 @@ export const VerticalEditorV2 = forwardRef(function VerticalEditorV2(
   const lines = useMemo(() => splitTextIntoLines(value, charsPerColumn), [value, charsPerColumn]);
 
   // EditorHandle
-  useImperativeHandle(ref, () => ({
-    get element() { return displayRef.current; },
-    insertText(text: string) {
-      const before = value.slice(0, cursorIndex);
-      const after = value.slice(cursorIndex);
-      const newValue = before + text + after;
-      onChange(newValue);
-      setCursorIndex(cursorIndex + text.length);
-      setSelectionEnd(null);
-    },
-    focus() { textareaRef.current?.focus(); },
-  }), [value, cursorIndex, onChange]);
+  useImperativeHandle(
+    ref,
+    () => ({
+      get element() {
+        return displayRef.current;
+      },
+      insertText(text: string) {
+        const before = value.slice(0, cursorIndex);
+        const after = value.slice(cursorIndex);
+        const newValue = before + text + after;
+        onChange(newValue);
+        setCursorIndex(cursorIndex + text.length);
+        setSelectionEnd(null);
+      },
+      focus() {
+        textareaRef.current?.focus();
+      },
+    }),
+    [value, cursorIndex, onChange],
+  );
 
   // textarea にフォーカスを常に維持
-  const focusTextarea = useCallback(() => {
+  const _focusTextarea = useCallback(() => {
     textareaRef.current?.focus();
   }, []);
 
@@ -177,40 +192,43 @@ export const VerticalEditorV2 = forwardRef(function VerticalEditorV2(
   }, [value, composing]);
 
   // 表示レイヤーのクリック → カーソル位置を計算
-  const handleDisplayClick = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
-    const display = displayRef.current;
-    if (!display) return;
+  const handleDisplayClick = useCallback(
+    (e: ReactMouseEvent<HTMLDivElement>) => {
+      const display = displayRef.current;
+      if (!display) return;
 
-    const rect = display.getBoundingClientRect();
-    const scrollLeft = display.parentElement?.scrollLeft ?? 0;
+      const rect = display.getBoundingClientRect();
+      const scrollLeft = display.parentElement?.scrollLeft ?? 0;
 
-    // 縦書き: X は右から左（列）、Y は上から下（文字）
-    const x = rect.right - e.clientX + scrollLeft;
-    const y = e.clientY - rect.top;
+      // 縦書き: X は右から左（列）、Y は上から下（文字）
+      const x = rect.right - e.clientX + scrollLeft;
+      const y = e.clientY - rect.top;
 
-    // 1列の幅と1文字の高さ（CSS変数から計算）
-    const style = getComputedStyle(display);
-    const fontSize = parseFloat(style.fontSize);
-    const lineHeight = parseFloat(style.lineHeight) / fontSize;
-    const colWidth = fontSize * lineHeight;
-    const charHeight = fontSize;
+      // 1列の幅と1文字の高さ（CSS変数から計算）
+      const style = getComputedStyle(display);
+      const fontSize = parseFloat(style.fontSize);
+      const lineHeight = parseFloat(style.lineHeight) / fontSize;
+      const colWidth = fontSize * lineHeight;
+      const charHeight = fontSize;
 
-    const padding = parseFloat(style.paddingTop);
+      const padding = parseFloat(style.paddingTop);
 
-    const col = Math.floor(x / colWidth);
-    const row = Math.floor((y - padding) / charHeight);
+      const col = Math.floor(x / colWidth);
+      const row = Math.floor((y - padding) / charHeight);
 
-    const newCursor = gridToCursor({ col, row }, lines);
-    setCursorIndex(newCursor);
-    setSelectionEnd(null);
+      const newCursor = gridToCursor({ col, row }, lines);
+      setCursorIndex(newCursor);
+      setSelectionEnd(null);
 
-    // textarea のカーソルも同期
-    const ta = textareaRef.current;
-    if (ta) {
-      ta.setSelectionRange(newCursor, newCursor);
-      ta.focus();
-    }
-  }, [lines]);
+      // textarea のカーソルも同期
+      const ta = textareaRef.current;
+      if (ta) {
+        ta.setSelectionRange(newCursor, newCursor);
+        ta.focus();
+      }
+    },
+    [lines],
+  );
 
   // カーソルのグリッド位置
   const cursorGrid = useMemo(() => cursorToGrid(cursorIndex, lines), [cursorIndex, lines]);
@@ -231,10 +249,7 @@ export const VerticalEditorV2 = forwardRef(function VerticalEditorV2(
   const isEmpty = !value && !composing;
 
   return (
-    <div
-      className={`v2-editor-container${focused ? ' v2-focused' : ''}`}
-      ref={containerRef}
-    >
+    <div className={`v2-editor-container${focused ? ' v2-focused' : ''}`} ref={containerRef}>
       {/* Hidden textarea for input */}
       <textarea
         ref={textareaRef}
@@ -263,15 +278,15 @@ export const VerticalEditorV2 = forwardRef(function VerticalEditorV2(
           onClick={handleDisplayClick}
         >
           {/* プレースホルダー */}
-          {isEmpty && (
-            <div className="v2-placeholder">{placeholder || 'ここに入力'}</div>
-          )}
+          {isEmpty && <div className="v2-placeholder">{placeholder || 'ここに入力'}</div>}
 
           {/* テキスト描画 */}
           {lines.map((line, colIdx) => (
             <div key={colIdx} className="v2-column">
               {line.text.split('').map((char, charIdx) => (
-                <span key={charIdx} className="v2-char">{char}</span>
+                <span key={charIdx} className="v2-char">
+                  {char}
+                </span>
               ))}
               {line.text.length === 0 && <span className="v2-char v2-char-empty">{'\u3000'}</span>}
             </div>
@@ -281,33 +296,40 @@ export const VerticalEditorV2 = forwardRef(function VerticalEditorV2(
           {focused && !selectionEnd && (
             <div
               className="v2-cursor"
-              style={{
-                '--cursor-col': cursorGrid.col,
-                '--cursor-row': cursorGrid.row,
-              } as React.CSSProperties}
+              style={
+                {
+                  '--cursor-col': cursorGrid.col,
+                  '--cursor-row': cursorGrid.row,
+                } as React.CSSProperties
+              }
             />
           )}
 
           {/* 選択範囲 */}
-          {selectionGrids && selectionGrids.map((g, i) => (
-            <div
-              key={i}
-              className="v2-selection"
-              style={{
-                '--cursor-col': g.col,
-                '--cursor-row': g.row,
-              } as React.CSSProperties}
-            />
-          ))}
+          {selectionGrids &&
+            selectionGrids.map((g, i) => (
+              <div
+                key={i}
+                className="v2-selection"
+                style={
+                  {
+                    '--cursor-col': g.col,
+                    '--cursor-row': g.row,
+                  } as React.CSSProperties
+                }
+              />
+            ))}
 
           {/* IME 変換中テキスト */}
           {composing && compositionText && (
             <div
               className="v2-composition"
-              style={{
-                '--cursor-col': cursorGrid.col,
-                '--cursor-row': cursorGrid.row,
-              } as React.CSSProperties}
+              style={
+                {
+                  '--cursor-col': cursorGrid.col,
+                  '--cursor-row': cursorGrid.row,
+                } as React.CSSProperties
+              }
             >
               {compositionText}
             </div>
@@ -318,7 +340,9 @@ export const VerticalEditorV2 = forwardRef(function VerticalEditorV2(
       {/* Ruler */}
       <div className="v2-ruler" aria-hidden="true">
         {numbers.map((n) => (
-          <span key={n} className={n % 2 === 0 ? 'ruler-even' : 'ruler-odd'}>{n}</span>
+          <span key={n} className={n % 2 === 0 ? 'ruler-even' : 'ruler-odd'}>
+            {n}
+          </span>
         ))}
       </div>
     </div>

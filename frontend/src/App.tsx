@@ -21,7 +21,14 @@ function ProtectedRoute({ children }: { children: ReactElement }): ReactElement 
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+        }}
+      >
         <p style={{ color: 'var(--text-secondary)' }}>読み込み中...</p>
       </div>
     );
@@ -49,100 +56,116 @@ export function App(): ReactElement {
     <BrowserRouter>
       <AuthProvider>
         <FeatureFlagsProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route
-            path="/catalog"
-            element={
-              <ProtectedRoute>
-                <CatalogPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/editor/:scriptId"
-            element={
-              <ProtectedRoute>
-                <EditorPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/editor"
-            element={
-              <ProtectedRoute>
-                <EditorPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/users"
-            element={
-              <ProtectedRoute>
-                <AdminRoute>
-                  <AdminUsersPage />
-                </AdminRoute>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/groups"
-            element={
-              <ProtectedRoute>
-                <GroupListPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/groups/:groupId"
-            element={
-              <ProtectedRoute>
-                <GroupDetailPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/groups/:groupId/submissions/:submissionId"
-            element={
-              <ProtectedRoute>
-                <SubmissionViewPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/contests"
-            element={<ProtectedRoute><ContestListPage /></ProtectedRoute>}
-          />
-          <Route
-            path="/contests/new"
-            element={<ProtectedRoute><ContestCreatePage /></ProtectedRoute>}
-          />
-          <Route
-            path="/contests/:contestId"
-            element={<ProtectedRoute><ContestDetailPage /></ProtectedRoute>}
-          />
-          <Route
-            path="/contests/:contestId/entries/:entryId"
-            element={<ProtectedRoute><ContestEntryPage /></ProtectedRoute>}
-          />
-          <Route
-            path="/groups/:groupId/submissions/:submissionId/corrections"
-            element={
-              <ProtectedRoute>
-                <CorrectionPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/release-notes"
-            element={
-              <ProtectedRoute>
-                <ReleaseNotesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/catalog" replace />} />
-        </Routes>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/catalog"
+              element={
+                <ProtectedRoute>
+                  <CatalogPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/editor/:scriptId"
+              element={
+                <ProtectedRoute>
+                  <EditorPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/editor"
+              element={
+                <ProtectedRoute>
+                  <EditorPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminUsersPage />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/groups"
+              element={
+                <ProtectedRoute>
+                  <GroupListPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/groups/:groupId"
+              element={
+                <ProtectedRoute>
+                  <GroupDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/groups/:groupId/submissions/:submissionId"
+              element={
+                <ProtectedRoute>
+                  <SubmissionViewPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/contests"
+              element={
+                <ProtectedRoute>
+                  <ContestListPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/contests/new"
+              element={
+                <ProtectedRoute>
+                  <ContestCreatePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/contests/:contestId"
+              element={
+                <ProtectedRoute>
+                  <ContestDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/contests/:contestId/entries/:entryId"
+              element={
+                <ProtectedRoute>
+                  <ContestEntryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/groups/:groupId/submissions/:submissionId/corrections"
+              element={
+                <ProtectedRoute>
+                  <CorrectionPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/release-notes"
+              element={
+                <ProtectedRoute>
+                  <ReleaseNotesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<Navigate to="/catalog" replace />} />
+          </Routes>
         </FeatureFlagsProvider>
       </AuthProvider>
     </BrowserRouter>

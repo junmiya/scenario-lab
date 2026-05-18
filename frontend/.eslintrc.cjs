@@ -9,4 +9,16 @@ module.exports = {
     node: true,
   },
   ignorePatterns: ['dist', 'build', 'coverage'],
+  rules: {
+    'no-irregular-whitespace': ['error', {
+      skipStrings: true,
+      skipTemplates: true,
+      skipJSXText: true,
+    }],
+    '@typescript-eslint/no-unused-vars': ['error', {
+      argsIgnorePattern: '^_',
+      varsIgnorePattern: '^_',
+      destructuredArrayIgnorePattern: '^_',
+    }],
+  },
 };

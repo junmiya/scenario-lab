@@ -12,11 +12,12 @@ describe('US1 vertical editor flow', () => {
   });
 
   it('recalculates guide metrics from line and page settings', () => {
-    const state = createInitialEditorState();
-    const metrics = recalculateGuideMetrics(
-      'a'.repeat(150),
-      { lineLength: 25, linesPerPage: 20, pageCount: 12 },
-    );
+    createInitialEditorState();
+    const metrics = recalculateGuideMetrics('a'.repeat(150), {
+      lineLength: 25,
+      linesPerPage: 20,
+      pageCount: 12,
+    });
 
     expect(metrics.totalCapacity).toBe(6000);
     expect(metrics.filledRatio).toBeGreaterThan(0);
