@@ -1,6 +1,15 @@
-import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef, type Ref, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useCallback,
+  useImperativeHandle,
+  forwardRef,
+  type Ref,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 
-const isSafari = typeof navigator !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+const isSafari =
+  typeof navigator !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
 export interface EditorHandle {
   element: HTMLDivElement | null;
@@ -31,16 +40,24 @@ export const VerticalEditor = forwardRef(function VerticalEditor(
   const composingRef = useRef(false);
   const initializedRef = useRef(false);
 
-  useImperativeHandle(ref, () => ({
-    get element() { return divRef.current; },
-    insertText(text: string) {
-      const el = divRef.current;
-      if (!el) return;
-      el.focus();
-      document.execCommand('insertText', false, text);
-    },
-    focus() { divRef.current?.focus(); },
-  }), []);
+  useImperativeHandle(
+    ref,
+    () => ({
+      get element() {
+        return divRef.current;
+      },
+      insertText(text: string) {
+        const el = divRef.current;
+        if (!el) return;
+        el.focus();
+        document.execCommand('insertText', false, text);
+      },
+      focus() {
+        divRef.current?.focus();
+      },
+    }),
+    [],
+  );
 
   // Set initial content once on mount
   useEffect(() => {
@@ -64,11 +81,14 @@ export const VerticalEditor = forwardRef(function VerticalEditor(
     lastEmittedValue.current = value;
   }, [value]);
 
-  const emitChange = useCallback((el: HTMLDivElement) => {
-    const text = getText(el);
-    lastEmittedValue.current = text;
-    onChange(text);
-  }, [onChange]);
+  const emitChange = useCallback(
+    (el: HTMLDivElement) => {
+      const text = getText(el);
+      lastEmittedValue.current = text;
+      onChange(text);
+    },
+    [onChange],
+  );
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (rulerRef.current) {
@@ -130,7 +150,9 @@ export const VerticalEditor = forwardRef(function VerticalEditor(
             width: `max(100%, calc(${lineCount} * var(--editor-column-width) + var(--space-lg) * 2))`,
             height: `calc(${charsPerColumn}em + var(--space-lg) * 2)`,
           }}
-          onCompositionStart={() => { composingRef.current = true; }}
+          onCompositionStart={() => {
+            composingRef.current = true;
+          }}
           onCompositionEnd={(e) => {
             composingRef.current = false;
             emitChange(e.currentTarget as HTMLDivElement);
@@ -146,7 +168,9 @@ export const VerticalEditor = forwardRef(function VerticalEditor(
       </div>
       <div className="vertical-editor-ruler" ref={rulerRef} aria-hidden="true">
         {numbers.map((n) => (
-          <span key={n} className={n % 2 === 0 ? 'ruler-even' : 'ruler-odd'}>{n}</span>
+          <span key={n} className={n % 2 === 0 ? 'ruler-even' : 'ruler-odd'}>
+            {n}
+          </span>
         ))}
       </div>
     </div>

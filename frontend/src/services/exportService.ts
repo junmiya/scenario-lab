@@ -7,6 +7,7 @@ import {
   PageTextDirectionType,
   DocumentGridType,
   SectionType,
+  type ISectionOptions,
 } from 'docx';
 import JSZip from 'jszip';
 
@@ -16,8 +17,8 @@ export interface ExportInput {
   synopsis: string;
   characterText: string;
   content: string;
-  lineLength: number;      // chars per column (字数/行)
-  linesPerPage: number;    // columns per page (行数/枚)
+  lineLength: number; // chars per column (字数/行)
+  linesPerPage: number; // columns per page (行数/枚)
 }
 
 export interface ExportPayload {
@@ -97,20 +98,33 @@ export async function createExportPayload(input: ExportInput): Promise<ExportPay
     textDirection: PageTextDirectionType.TOP_TO_BOTTOM_RIGHT_TO_LEFT,
   };
 
-  const sections: any[] = [
+  const sections: ISectionOptions[] = [
     {
       properties: { page: pageProps, grid: gridProps },
       children: [
         ...Array.from({ length: 6 }, () => new Paragraph({ children: [] })),
         new Paragraph({
           alignment: AlignmentType.CENTER,
-          children: [new TextRun({ text: input.title, bold: true, font: FONT_CONFIG, size: TITLE_FONT_SIZE_PT * 2 })],
+          children: [
+            new TextRun({
+              text: input.title,
+              bold: true,
+              font: FONT_CONFIG,
+              size: TITLE_FONT_SIZE_PT * 2,
+            }),
+          ],
         }),
         new Paragraph({ children: [] }),
         new Paragraph({ children: [] }),
         new Paragraph({
           alignment: AlignmentType.CENTER,
-          children: [new TextRun({ text: `作　${input.authorName}`, font: FONT_CONFIG, size: FONT_SIZE_PT * 2 })],
+          children: [
+            new TextRun({
+              text: `作　${input.authorName}`,
+              font: FONT_CONFIG,
+              size: FONT_SIZE_PT * 2,
+            }),
+          ],
         }),
       ],
     },
@@ -119,14 +133,22 @@ export async function createExportPayload(input: ExportInput): Promise<ExportPay
   if (input.characterText.trim()) {
     sections.push({
       properties: { type: SectionType.NEXT_PAGE, page: pageProps, grid: gridProps },
-      children: [buildSectionHeading('登場人物'), new Paragraph({ children: [] }), ...buildTextParagraphs(input.characterText)],
+      children: [
+        buildSectionHeading('登場人物'),
+        new Paragraph({ children: [] }),
+        ...buildTextParagraphs(input.characterText),
+      ],
     });
   }
 
   if (input.synopsis.trim()) {
     sections.push({
       properties: { type: SectionType.NEXT_PAGE, page: pageProps, grid: gridProps },
-      children: [buildSectionHeading('あらすじ'), new Paragraph({ children: [] }), ...buildTextParagraphs(input.synopsis)],
+      children: [
+        buildSectionHeading('あらすじ'),
+        new Paragraph({ children: [] }),
+        ...buildTextParagraphs(input.synopsis),
+      ],
     });
   }
 
@@ -181,7 +203,12 @@ function collectParagraphs(body: Element): ParagraphEntry[] {
         if (sp.length > 0) hasSectPr = true;
       }
       result.push({ element: el, sectionIndex: sectionIdx, paragraphIndex: paraIdx, hasSectPr });
-      if (hasSectPr) { sectionIdx++; paraIdx = 0; } else { paraIdx++; }
+      if (hasSectPr) {
+        sectionIdx++;
+        paraIdx = 0;
+      } else {
+        paraIdx++;
+      }
     }
   }
   return result;
@@ -212,15 +239,26 @@ function replaceParagraphText(p: Element, text: string, doc: XMLDocument, font?:
 }
 
 /** テキストを複数段落として段落の後に挿入 */
-function insertLinesAfter(refPara: Element, lines: string[], doc: XMLDocument, body: Element, font?: string): void {
+function insertLinesAfter(
+  refPara: Element,
+  lines: string[],
+  doc: XMLDocument,
+  body: Element,
+  font?: string,
+): void {
   const parser = new DOMParser();
   let insertBefore = refPara.nextSibling;
 
   for (const line of lines) {
     const escaped = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const rPr = font ? `<w:rPr><w:rFonts w:eastAsia="${font}" w:ascii="${font}" w:hAnsi="${font}"/></w:rPr>` : '';
+    const rPr = font
+      ? `<w:rPr><w:rFonts w:eastAsia="${font}" w:ascii="${font}" w:hAnsi="${font}"/></w:rPr>`
+      : '';
     const xml = `<w:p xmlns:w="${W_NS}"><w:r>${rPr}<w:t xml:space="preserve">${escaped || '\u3000'}</w:t></w:r></w:p>`;
-    const tmpDoc = parser.parseFromString(`<root xmlns:w="${W_NS}">${xml}</root>`, 'application/xml');
+    const tmpDoc = parser.parseFromString(
+      `<root xmlns:w="${W_NS}">${xml}</root>`,
+      'application/xml',
+    );
     const imported = doc.importNode(tmpDoc.documentElement.firstChild!, true);
     if (insertBefore) {
       body.insertBefore(imported, insertBefore);
@@ -232,7 +270,14 @@ function insertLinesAfter(refPara: Element, lines: string[], doc: XMLDocument, b
 }
 
 /** セクション内のマッピング対象以外の段落を全削除して content で埋める */
-function fillSection(sectionIndex: number, lines: string[], paragraphs: ParagraphEntry[], doc: XMLDocument, body: Element, font?: string): void {
+function fillSection(
+  sectionIndex: number,
+  lines: string[],
+  paragraphs: ParagraphEntry[],
+  doc: XMLDocument,
+  body: Element,
+  font?: string,
+): void {
   const sectionParas = paragraphs.filter((p) => p.sectionIndex === sectionIndex && !p.hasSectPr);
 
   // 削除前に、挿入位置の参照先を確保（最初の段落の前の兄弟ノード or セクション区切り段落）
@@ -251,9 +296,14 @@ function fillSection(sectionIndex: number, lines: string[], paragraphs: Paragrap
   const parser = new DOMParser();
   for (const line of lines) {
     const escaped = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const rPr = font ? `<w:rPr><w:rFonts w:eastAsia="${font}" w:ascii="${font}" w:hAnsi="${font}"/></w:rPr>` : '';
+    const rPr = font
+      ? `<w:rPr><w:rFonts w:eastAsia="${font}" w:ascii="${font}" w:hAnsi="${font}"/></w:rPr>`
+      : '';
     const xml = `<w:p xmlns:w="${W_NS}"><w:r>${rPr}<w:t xml:space="preserve">${escaped || '\u3000'}</w:t></w:r></w:p>`;
-    const tmpDoc = parser.parseFromString(`<root xmlns:w="${W_NS}">${xml}</root>`, 'application/xml');
+    const tmpDoc = parser.parseFromString(
+      `<root xmlns:w="${W_NS}">${xml}</root>`,
+      'application/xml',
+    );
     const imported = doc.importNode(tmpDoc.documentElement.firstChild!, true);
     if (insertBefore) {
       body.insertBefore(imported, insertBefore);
@@ -282,8 +332,8 @@ export async function createExportFromTemplate(
   const docXmlText = await docXmlFile.async('text');
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(docXmlText, 'application/xml') as XMLDocument;
-  const body = xmlDoc.getElementsByTagNameNS(W_NS, 'body')[0]
-    ?? xmlDoc.getElementsByTagName('w:body')[0];
+  const body =
+    xmlDoc.getElementsByTagNameNS(W_NS, 'body')[0] ?? xmlDoc.getElementsByTagName('w:body')[0];
   if (!body) throw new Error('TEMPLATE_INVALID: no w:body');
 
   const paragraphs = collectParagraphs(body);
@@ -293,7 +343,10 @@ export async function createExportFromTemplate(
   const allRFonts = xmlDoc.getElementsByTagNameNS(W_NS, 'rFonts');
   for (let i = 0; i < allRFonts.length; i++) {
     const ea = allRFonts[i]!.getAttribute('w:eastAsia') ?? '';
-    if (ea) { templateFont = ea; break; }
+    if (ea) {
+      templateFont = ea;
+      break;
+    }
   }
   console.log('[export-template] font:', templateFont);
 
@@ -338,7 +391,9 @@ export async function createExportFromTemplate(
       insertLinesAfter(para.element, lines, xmlDoc, body as Element, templateFont);
       // insertAfter の次の段落がプレースホルダーならテキストをクリア（sectPr は保持）
       const nextPara = paragraphs.find(
-        (p) => p.sectionIndex === mapping.sectionIndex && p.paragraphIndex === mapping.paragraphIndex + 1,
+        (p) =>
+          p.sectionIndex === mapping.sectionIndex &&
+          p.paragraphIndex === mapping.paragraphIndex + 1,
       );
       if (nextPara && nextPara.hasSectPr) {
         replaceParagraphText(nextPara.element, '', xmlDoc, templateFont);
@@ -355,7 +410,14 @@ export async function createExportFromTemplate(
     if (input.synopsis.trim() && !fieldMappings.some((m) => m.field === 'synopsis')) {
       lines.unshift('', 'あらすじ', '', ...input.synopsis.split('\n'), '');
     }
-    fillSection(contentMapping.sectionIndex, lines, paragraphs, xmlDoc, body as Element, templateFont);
+    fillSection(
+      contentMapping.sectionIndex,
+      lines,
+      paragraphs,
+      xmlDoc,
+      body as Element,
+      templateFont,
+    );
   }
 
   // シリアライズして書き戻し
@@ -378,21 +440,33 @@ export async function savePayloadAs(payload: ExportPayload): Promise<string> {
   console.log('[save] showSaveFilePicker supported:', 'showSaveFilePicker' in window);
   if ('showSaveFilePicker' in window) {
     try {
-      const handle = await (window as any).showSaveFilePicker({
+      // File System Access API (not yet in all TS libs)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const picker = (window as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>)
+        .showSaveFilePicker;
+      const handle = (await picker!({
         suggestedName: payload.fileName,
         types: [
           {
             description: 'Word文書',
-            accept: { 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'] },
+            accept: {
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+            },
           },
         ],
-      });
+      })) as {
+        name: string;
+        createWritable: () => Promise<{
+          write: (data: Blob) => Promise<void>;
+          close: () => Promise<void>;
+        }>;
+      };
       const writable = await handle.createWritable();
       await writable.write(payload.blob);
       await writable.close();
-      return handle.name as string;
-    } catch (e: any) {
-      if (e?.name === 'AbortError') return '';
+      return handle.name;
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name === 'AbortError') return '';
       throw e;
     }
   }

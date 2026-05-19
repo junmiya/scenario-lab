@@ -130,8 +130,20 @@ export async function generateAdvice(input: GenerateAdviceInput): Promise<Advice
 
   // Direct client-side AI call (prototype mode)
   const [panelA, panelB] = await Promise.all([
-    generatePanelAdvice(input.panelAProvider, input.panelAPreset, input.synopsis, input.content, input.selectedText),
-    generatePanelAdvice(input.panelBProvider, input.panelBPreset, input.synopsis, input.content, input.selectedText),
+    generatePanelAdvice(
+      input.panelAProvider,
+      input.panelAPreset,
+      input.synopsis,
+      input.content,
+      input.selectedText,
+    ),
+    generatePanelAdvice(
+      input.panelBProvider,
+      input.panelBPreset,
+      input.synopsis,
+      input.content,
+      input.selectedText,
+    ),
   ]);
 
   return { panelA, panelB };

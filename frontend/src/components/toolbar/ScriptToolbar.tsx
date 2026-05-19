@@ -6,17 +6,14 @@ export type ToolbarAction = 'scene' | 'dialogue' | 'action';
 export const INSERT_TEMPLATES: Record<ToolbarAction, string> = {
   scene: '○',
   dialogue: '「」',
-  action: '\u3000\u3000\u3000',  // 3 full-width spaces
+  action: '\u3000\u3000\u3000', // 3 full-width spaces
 };
 
 export function applyToolbarAction(content: string, action: ToolbarAction): string {
   return `${content}${INSERT_TEMPLATES[action]}`;
 }
 
-export function insertToolbarAction(
-  handle: EditorHandle,
-  action: ToolbarAction,
-): void {
+export function insertToolbarAction(handle: EditorHandle, action: ToolbarAction): void {
   const template = INSERT_TEMPLATES[action];
   handle.focus();
   handle.insertText(template);

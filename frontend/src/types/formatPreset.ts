@@ -2,9 +2,9 @@ export type MappedField = 'title' | 'authorName' | 'characterText' | 'synopsis' 
 
 export interface FieldMapping {
   field: MappedField;
-  keyword: string;           // 検出されたプレースホルダーテキスト
-  sectionIndex: number;      // テンプレートのセクション番号
-  paragraphIndex: number;    // そのセクション内の段落番号
+  keyword: string; // 検出されたプレースホルダーテキスト
+  sectionIndex: number; // テンプレートのセクション番号
+  paragraphIndex: number; // そのセクション内の段落番号
   action: 'replace' | 'insertAfter'; // 差し替え / 後に挿入
 }
 

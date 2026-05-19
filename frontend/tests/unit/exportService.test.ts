@@ -4,7 +4,15 @@ import { createExportPayload } from '../../src/services/exportService';
 describe('exportService', () => {
   it('fails when required metadata is missing', async () => {
     await expect(
-      createExportPayload({ title: '', authorName: 'a', synopsis: '', characterText: '', content: 'body', lineLength: 20, linesPerPage: 20 }),
+      createExportPayload({
+        title: '',
+        authorName: 'a',
+        synopsis: '',
+        characterText: '',
+        content: 'body',
+        lineLength: 20,
+        linesPerPage: 20,
+      }),
     ).rejects.toThrow('EXPORT_METADATA_REQUIRED');
   });
 

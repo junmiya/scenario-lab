@@ -42,10 +42,7 @@ export const DEFAULT_CHARACTER_SETTINGS: EditorSettings = {
   pageCount: 2,
 };
 
-export function recalculateGuideMetrics(
-  content: string,
-  settings: EditorSettings,
-): GuideMetrics {
+export function recalculateGuideMetrics(content: string, settings: EditorSettings): GuideMetrics {
   const totalCapacity = settings.lineLength * settings.linesPerPage * settings.pageCount;
   const contentLength = content.replace(/[\r\n]/g, '').length;
   const filledRatio = totalCapacity > 0 ? Math.min(contentLength / totalCapacity, 1) : 0;
@@ -111,20 +108,38 @@ export function updateSettings(state: EditorState, settings: EditorSettings): Ed
 
 export function updateSynopsis(state: EditorState, synopsis: string): EditorState {
   const next = { ...state, synopsis };
-  return { ...next, synopsisMetrics: recalculateGuideMetrics(next.synopsis, next.synopsisSettings) };
+  return {
+    ...next,
+    synopsisMetrics: recalculateGuideMetrics(next.synopsis, next.synopsisSettings),
+  };
 }
 
-export function updateSynopsisSettings(state: EditorState, synopsisSettings: EditorSettings): EditorState {
+export function updateSynopsisSettings(
+  state: EditorState,
+  synopsisSettings: EditorSettings,
+): EditorState {
   const next = { ...state, synopsisSettings };
-  return { ...next, synopsisMetrics: recalculateGuideMetrics(next.synopsis, next.synopsisSettings) };
+  return {
+    ...next,
+    synopsisMetrics: recalculateGuideMetrics(next.synopsis, next.synopsisSettings),
+  };
 }
 
 export function updateCharacterText(state: EditorState, characterText: string): EditorState {
   const next = { ...state, characterText };
-  return { ...next, characterMetrics: recalculateGuideMetrics(next.characterText, next.characterSettings) };
+  return {
+    ...next,
+    characterMetrics: recalculateGuideMetrics(next.characterText, next.characterSettings),
+  };
 }
 
-export function updateCharacterSettings(state: EditorState, characterSettings: EditorSettings): EditorState {
+export function updateCharacterSettings(
+  state: EditorState,
+  characterSettings: EditorSettings,
+): EditorState {
   const next = { ...state, characterSettings };
-  return { ...next, characterMetrics: recalculateGuideMetrics(next.characterText, next.characterSettings) };
+  return {
+    ...next,
+    characterMetrics: recalculateGuideMetrics(next.characterText, next.characterSettings),
+  };
 }

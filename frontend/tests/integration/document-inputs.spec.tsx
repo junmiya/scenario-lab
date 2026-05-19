@@ -27,9 +27,9 @@ vi.mock('../../src/lib/firebase/firestoreService', () => ({
   updateScript: vi.fn(() => Promise.resolve()),
 }));
 vi.mock('../../src/services/adviceService', () => ({
-  listAdviceModels: vi.fn(() => Promise.resolve([
-    { provider: 'gemini', label: 'Gemini', enabled: true },
-  ])),
+  listAdviceModels: vi.fn(() =>
+    Promise.resolve([{ provider: 'gemini', label: 'Gemini', enabled: true }]),
+  ),
   generateAdvice: vi.fn(),
 }));
 vi.mock('@google/generative-ai', () => ({
@@ -87,7 +87,9 @@ describe('ドキュメント管理セクション入力検証', () => {
 
   it('あらすじ: テキスト入力をシミュレートできる', () => {
     const { container } = renderEditor();
-    const editor = container.querySelector('[data-placeholder="あらすじを入力..."]') as HTMLDivElement;
+    const editor = container.querySelector(
+      '[data-placeholder="あらすじを入力..."]',
+    ) as HTMLDivElement;
     expect(editor).toBeTruthy();
     act(() => {
       editor.innerText = 'ある日突然猫になった男の物語。';

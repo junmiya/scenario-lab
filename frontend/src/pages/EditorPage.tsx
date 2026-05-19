@@ -4,13 +4,19 @@ import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Layout } from '../components/ui/Layout';
 import { useAuth } from '../contexts/AuthContext';
-import { getScript, updateScript, saveVersion, type ScriptVersion } from '../lib/firebase/firestoreService';
+import { getScript, updateScript, saveVersion } from '../lib/firebase/firestoreService';
 import { useUndoRedo } from '../hooks/useUndoRedo';
 import { VersionHistory } from '../components/editor/VersionHistory';
 import { Undo2, Redo2 } from 'lucide-react';
-import { ContentCommentary, type ContentCommentaryCache } from '../components/advice/ContentCommentary';
+import {
+  ContentCommentary,
+  type ContentCommentaryCache,
+} from '../components/advice/ContentCommentary';
 import { ExportPreview } from '../components/export/ExportPreview';
-import { SynopsisCommentary, type SynopsisCommentaryCache } from '../components/advice/SynopsisCommentary';
+import {
+  SynopsisCommentary,
+  type SynopsisCommentaryCache,
+} from '../components/advice/SynopsisCommentary';
 import { DiscussionPanel, type DiscussionMessage } from '../components/advice/DiscussionPanel';
 import { Settings } from '../components/editor/Settings';
 import { VerticalEditor, type EditorHandle } from '../components/editor/VerticalEditor';
@@ -25,7 +31,11 @@ import {
   insertToolbarAction,
   type ToolbarAction,
 } from '../components/toolbar/ScriptToolbar';
-import { createExportPayload, createExportFromTemplate, savePayloadAs } from '../services/exportService';
+import {
+  createExportPayload,
+  createExportFromTemplate,
+  savePayloadAs,
+} from '../services/exportService';
 import { extractTextFromDocx } from '../services/importService';
 import { parseDocxTemplate } from '../services/templateParserService';
 import { createFormatPreset } from '../lib/firebase/firestoreService';
@@ -68,8 +78,12 @@ export function EditorPage(): ReactElement {
   const [exportMessage, setExportMessage] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [saveMessage, setSaveMessage] = useState('');
-  const [contentCommentaryCache, setContentCommentaryCache] = useState<ContentCommentaryCache | undefined>(undefined);
-  const [synopsisCommentaryCache, setSynopsisCommentaryCache] = useState<SynopsisCommentaryCache | undefined>(undefined);
+  const [contentCommentaryCache, setContentCommentaryCache] = useState<
+    ContentCommentaryCache | undefined
+  >(undefined);
+  const [synopsisCommentaryCache, setSynopsisCommentaryCache] = useState<
+    SynopsisCommentaryCache | undefined
+  >(undefined);
   const editorRef = useRef<EditorHandle | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [versionRefreshKey, setVersionRefreshKey] = useState(0);
@@ -188,13 +202,19 @@ export function EditorPage(): ReactElement {
     return Math.max(state.metrics.totalCapacity - contentLength, 0);
   }, [state.metrics.totalCapacity, contentLength]);
 
-  const synopsisContentLength = useMemo(() => state.synopsis.replace(/[\r\n]/g, '').length, [state.synopsis]);
+  const synopsisContentLength = useMemo(
+    () => state.synopsis.replace(/[\r\n]/g, '').length,
+    [state.synopsis],
+  );
 
   const synopsisRemaining = useMemo(() => {
     return Math.max(state.synopsisMetrics.totalCapacity - synopsisContentLength, 0);
   }, [state.synopsisMetrics.totalCapacity, synopsisContentLength]);
 
-  const characterContentLength = useMemo(() => state.characterText.replace(/[\r\n]/g, '').length, [state.characterText]);
+  const characterContentLength = useMemo(
+    () => state.characterText.replace(/[\r\n]/g, '').length,
+    [state.characterText],
+  );
 
   const characterRemaining = useMemo(() => {
     return Math.max(state.characterMetrics.totalCapacity - characterContentLength, 0);
@@ -224,9 +244,13 @@ export function EditorPage(): ReactElement {
       }
       await createFormatPreset(user.uid, { ...parsed, name });
       setPresetRefreshKey((k) => k + 1);
-      setExportMessage(`プリセット「${name}」を保存しました（${parsed.lineLength ?? '?'}字×${parsed.linesPerPage ?? '?'}行）。ドロップダウンから選択して「適用」してください。`);
+      setExportMessage(
+        `プリセット「${name}」を保存しました（${parsed.lineLength ?? '?'}字×${parsed.linesPerPage ?? '?'}行）。ドロップダウンから選択して「適用」してください。`,
+      );
     } catch (error) {
-      setExportMessage(`テンプレート解析失敗: ${error instanceof Error ? error.message : String(error)}`);
+      setExportMessage(
+        `テンプレート解析失敗: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   };
 
@@ -285,7 +309,11 @@ export function EditorPage(): ReactElement {
         linesPerPage: state.settings.linesPerPage,
       };
       const payload = selectedPreset?.templateBase64
-        ? await createExportFromTemplate(exportInput, selectedPreset.templateBase64, selectedPreset.fieldMappings ?? [])
+        ? await createExportFromTemplate(
+            exportInput,
+            selectedPreset.templateBase64,
+            selectedPreset.fieldMappings ?? [],
+          )
         : await createExportPayload(exportInput);
       const savedName = await savePayloadAs(payload);
       if (savedName) {
@@ -301,41 +329,91 @@ export function EditorPage(): ReactElement {
   return (
     <Layout
       headerTitle="脚本エディタ"
-      headerActions={<>
-        <button type="button" onClick={undo} disabled={!canUndo} title="元に戻す (Cmd+Z)" style={{ padding: '0.375rem', backgroundColor: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', cursor: canUndo ? 'pointer' : 'default', opacity: canUndo ? 1 : 0.3, color: 'var(--text-secondary)' }}>
-          <Undo2 size={16} />
-        </button>
-        <button type="button" onClick={redo} disabled={!canRedo} title="やり直す (Cmd+Shift+Z)" style={{ padding: '0.375rem', backgroundColor: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', cursor: canRedo ? 'pointer' : 'default', opacity: canRedo ? 1 : 0.3, color: 'var(--text-secondary)' }}>
-          <Redo2 size={16} />
-        </button>
-        {routeScriptId && (
-          <div style={{ position: 'relative' }}>
-            <VersionHistory scriptId={routeScriptId} refreshKey={versionRefreshKey} onRestore={(v) => {
-              setState((current) => ({
-                ...current,
-                title: v.title,
-                authorName: v.authorName,
-                synopsis: v.synopsis,
-                content: v.content,
-                characterText: v.characterText,
-                settings: { ...current.settings, ...v.settings },
-              }));
-            }} />
-          </div>
-        )}
-        {saveMessage && <span style={{ fontSize: '0.875rem', color: 'var(--color-success)' }}>{saveMessage}</span>}
-        {routeScriptId && (
-          <button type="button" className="btn-primary" onClick={() => void saveToFirestore()} style={{ fontWeight: 600 }}>
-            保存
+      headerActions={
+        <>
+          <button
+            type="button"
+            onClick={undo}
+            disabled={!canUndo}
+            title="元に戻す (Cmd+Z)"
+            style={{
+              padding: '0.375rem',
+              backgroundColor: 'transparent',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              cursor: canUndo ? 'pointer' : 'default',
+              opacity: canUndo ? 1 : 0.3,
+              color: 'var(--text-secondary)',
+            }}
+          >
+            <Undo2 size={16} />
           </button>
-        )}
-        <button type="button" onClick={() => navigate('/catalog')} style={{ backgroundColor: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
-          一覧に戻る
-        </button>
-      </>}
+          <button
+            type="button"
+            onClick={redo}
+            disabled={!canRedo}
+            title="やり直す (Cmd+Shift+Z)"
+            style={{
+              padding: '0.375rem',
+              backgroundColor: 'transparent',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-md)',
+              cursor: canRedo ? 'pointer' : 'default',
+              opacity: canRedo ? 1 : 0.3,
+              color: 'var(--text-secondary)',
+            }}
+          >
+            <Redo2 size={16} />
+          </button>
+          {routeScriptId && (
+            <div style={{ position: 'relative' }}>
+              <VersionHistory
+                scriptId={routeScriptId}
+                refreshKey={versionRefreshKey}
+                onRestore={(v) => {
+                  setState((current) => ({
+                    ...current,
+                    title: v.title,
+                    authorName: v.authorName,
+                    synopsis: v.synopsis,
+                    content: v.content,
+                    characterText: v.characterText,
+                    settings: { ...current.settings, ...v.settings },
+                  }));
+                }}
+              />
+            </div>
+          )}
+          {saveMessage && (
+            <span style={{ fontSize: '0.875rem', color: 'var(--color-success)' }}>
+              {saveMessage}
+            </span>
+          )}
+          {routeScriptId && (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => void saveToFirestore()}
+              style={{ fontWeight: 600 }}
+            >
+              保存
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => navigate('/catalog')}
+            style={{
+              backgroundColor: 'transparent',
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-text-secondary)',
+            }}
+          >
+            一覧に戻る
+          </button>
+        </>
+      }
     >
       <main className="main-container">
-
         {/* ── タイトル・著者 ── */}
         <section className="section-container" aria-label="タイトル・著者">
           <h3>タイトル・著者</h3>
@@ -376,15 +454,28 @@ export function EditorPage(): ReactElement {
           <VerticalEditor
             value={state.characterText}
             onChange={(value) => setState((current) => updateCharacterText(current, value))}
-            lineCount={Math.max(5, state.characterMetrics.currentLines, state.characterSettings.pageCount * 20)}
+            lineCount={Math.max(
+              5,
+              state.characterMetrics.currentLines,
+              state.characterSettings.pageCount * 20,
+            )}
             charsPerColumn={state.characterSettings.lineLength}
             placeholder="登場人物を入力..."
           />
           <p className="status-text" style={{ marginTop: 'var(--space-sm)' }}>
-            文字数: {characterContentLength} / 行数: {state.characterMetrics.currentLines} / 目安容量: {state.characterMetrics.totalCapacity}字 ({state.characterSettings.pageCount}枚) / 残り: {characterRemaining}字
+            文字数: {characterContentLength} / 行数: {state.characterMetrics.currentLines} /
+            目安容量: {state.characterMetrics.totalCapacity}字 ({state.characterSettings.pageCount}
+            枚) / 残り: {characterRemaining}字
           </p>
           {/* 設定（字数/行、行数/枚） */}
-          <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'end', marginTop: '0.75rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 'var(--space-md)',
+              alignItems: 'end',
+              marginTop: '0.75rem',
+            }}
+          >
             <label style={{ fontSize: '0.8125rem' }}>
               字数/行
               <input
@@ -401,7 +492,10 @@ export function EditorPage(): ReactElement {
                     s.synopsisSettings = { ...s.synopsisSettings, lineLength };
                     s.synopsisMetrics = recalculateGuideMetrics(s.synopsis, s.synopsisSettings);
                     s.characterSettings = { ...s.characterSettings, lineLength };
-                    s.characterMetrics = recalculateGuideMetrics(s.characterText, s.characterSettings);
+                    s.characterMetrics = recalculateGuideMetrics(
+                      s.characterText,
+                      s.characterSettings,
+                    );
                     return s;
                   });
                 }}
@@ -424,7 +518,10 @@ export function EditorPage(): ReactElement {
                     s.synopsisSettings = { ...s.synopsisSettings, linesPerPage };
                     s.synopsisMetrics = recalculateGuideMetrics(s.synopsis, s.synopsisSettings);
                     s.characterSettings = { ...s.characterSettings, linesPerPage };
-                    s.characterMetrics = recalculateGuideMetrics(s.characterText, s.characterSettings);
+                    s.characterMetrics = recalculateGuideMetrics(
+                      s.characterText,
+                      s.characterSettings,
+                    );
                     return s;
                   });
                 }}
@@ -432,7 +529,8 @@ export function EditorPage(): ReactElement {
               />
             </label>
             <span style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)' }}>
-              1枚 = {state.settings.lineLength}字 × {state.settings.linesPerPage}行 = {state.settings.lineLength * state.settings.linesPerPage}字
+              1枚 = {state.settings.lineLength}字 × {state.settings.linesPerPage}行 ={' '}
+              {state.settings.lineLength * state.settings.linesPerPage}字
             </span>
           </div>
         </section>
@@ -440,7 +538,14 @@ export function EditorPage(): ReactElement {
         {/* ── あらすじ ── */}
         <section className="section-container" aria-label="あらすじ">
           <h3>あらすじ</h3>
-          <SynopsisCommentary synopsis={state.synopsis} scriptId={routeScriptId ?? ''} charsPerColumn={state.synopsisSettings.lineLength} pageCount={state.synopsisSettings.pageCount} initialCache={synopsisCommentaryCache} onCacheChange={setSynopsisCommentaryCache}>
+          <SynopsisCommentary
+            synopsis={state.synopsis}
+            scriptId={routeScriptId ?? ''}
+            charsPerColumn={state.synopsisSettings.lineLength}
+            pageCount={state.synopsisSettings.pageCount}
+            initialCache={synopsisCommentaryCache}
+            onCacheChange={setSynopsisCommentaryCache}
+          >
             <Settings
               value={state.synopsisSettings}
               onChange={(value) => setState((current) => updateSynopsisSettings(current, value))}
@@ -449,12 +554,18 @@ export function EditorPage(): ReactElement {
             <VerticalEditor
               value={state.synopsis}
               onChange={(value) => setState((current) => updateSynopsis(current, value))}
-              lineCount={Math.max(5, state.synopsisMetrics.currentLines, state.synopsisSettings.pageCount * 20)}
+              lineCount={Math.max(
+                5,
+                state.synopsisMetrics.currentLines,
+                state.synopsisSettings.pageCount * 20,
+              )}
               charsPerColumn={state.synopsisSettings.lineLength}
               placeholder="あらすじを入力..."
             />
             <p className="status-text" style={{ marginTop: 'var(--space-sm)' }}>
-              文字数: {synopsisContentLength} / 行数: {state.synopsisMetrics.currentLines} / 目安容量: {state.synopsisMetrics.totalCapacity}字 ({state.synopsisSettings.pageCount}枚) / 残り: {synopsisRemaining}字
+              文字数: {synopsisContentLength} / 行数: {state.synopsisMetrics.currentLines} /
+              目安容量: {state.synopsisMetrics.totalCapacity}字 ({state.synopsisSettings.pageCount}
+              枚) / 残り: {synopsisRemaining}字
             </p>
           </SynopsisCommentary>
         </section>
@@ -469,37 +580,77 @@ export function EditorPage(): ReactElement {
             pageCount={state.settings.pageCount}
             initialCache={contentCommentaryCache}
             onCacheChange={setContentCommentaryCache}
-            afterDirector={synopsisContentLength >= 10 ? (
-              <div style={{ margin: '0.5rem 0' }}>
-                <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>構成ガイド</div>
-                <div style={{ display: 'flex', direction: 'rtl', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
-                  {structureSegments.map((seg) => {
-                    const chars = Math.round(state.metrics.totalCapacity * seg.ratio);
-                    const isActive = seg.id === activeSegmentId;
-                    return (
-                      <div key={seg.id} style={{
-                        flex: seg.ratio,
-                        padding: '0.375rem 0.5rem',
-                        textAlign: 'center',
-                        fontSize: '0.75rem',
-                        fontWeight: isActive ? 700 : 400,
-                        backgroundColor: isActive ? 'var(--color-primary-light, #dbeafe)' : 'var(--color-surface)',
-                        borderLeft: '1px solid var(--color-border)',
-                        color: isActive ? 'var(--color-primary, #2563eb)' : 'var(--text-primary)',
-                        direction: 'ltr',
-                      }}>
-                        <span style={{ fontWeight: 600 }}>{seg.label}</span>
-                        <span style={{ fontSize: '0.625rem', color: 'var(--text-secondary)', marginLeft: '0.25rem' }}>
-                          {Math.round(seg.ratio * 100)}% ({chars}字)
-                        </span>
-                      </div>
-                    );
-                  })}
+            afterDirector={
+              synopsisContentLength >= 10 ? (
+                <div style={{ margin: '0.5rem 0' }}>
+                  <div
+                    style={{
+                      fontSize: '0.6875rem',
+                      fontWeight: 600,
+                      color: 'var(--text-secondary)',
+                      marginBottom: '0.25rem',
+                    }}
+                  >
+                    構成ガイド
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      direction: 'rtl',
+                      borderRadius: 'var(--radius-md)',
+                      overflow: 'hidden',
+                      border: '1px solid var(--color-border)',
+                    }}
+                  >
+                    {structureSegments.map((seg) => {
+                      const chars = Math.round(state.metrics.totalCapacity * seg.ratio);
+                      const isActive = seg.id === activeSegmentId;
+                      return (
+                        <div
+                          key={seg.id}
+                          style={{
+                            flex: seg.ratio,
+                            padding: '0.375rem 0.5rem',
+                            textAlign: 'center',
+                            fontSize: '0.75rem',
+                            fontWeight: isActive ? 700 : 400,
+                            backgroundColor: isActive
+                              ? 'var(--color-primary-light, #dbeafe)'
+                              : 'var(--color-surface)',
+                            borderLeft: '1px solid var(--color-border)',
+                            color: isActive
+                              ? 'var(--color-primary, #2563eb)'
+                              : 'var(--text-primary)',
+                            direction: 'ltr',
+                          }}
+                        >
+                          <span style={{ fontWeight: 600 }}>{seg.label}</span>
+                          <span
+                            style={{
+                              fontSize: '0.625rem',
+                              color: 'var(--text-secondary)',
+                              marginLeft: '0.25rem',
+                            }}
+                          >
+                            {Math.round(seg.ratio * 100)}% ({chars}字)
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ) : undefined}
+              ) : undefined
+            }
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-end',
+                gap: 'var(--space-md)',
+                flexWrap: 'wrap',
+              }}
+            >
               <Settings
                 value={state.settings}
                 onChange={(value) => setState((current) => updateSettings(current, value))}
@@ -509,8 +660,25 @@ export function EditorPage(): ReactElement {
             </div>
             {/* 執筆開始位置ボタン */}
             {synopsisContentLength >= 10 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.5rem', direction: 'rtl' }}>
-                <span style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', direction: 'ltr' }}>執筆開始位置:</span>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.375rem',
+                  marginBottom: '0.5rem',
+                  direction: 'rtl',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '0.6875rem',
+                    color: 'var(--text-secondary)',
+                    whiteSpace: 'nowrap',
+                    direction: 'ltr',
+                  }}
+                >
+                  執筆開始位置:
+                </span>
                 {structureSegments.map((seg) => {
                   const isActive = seg.id === activeSegmentId;
                   return (
@@ -522,7 +690,10 @@ export function EditorPage(): ReactElement {
                         // Calculate character offset for this segment
                         const offset = structureSegments
                           .slice(0, structureSegments.indexOf(seg))
-                          .reduce((sum, s) => sum + Math.round(state.metrics.totalCapacity * s.ratio), 0);
+                          .reduce(
+                            (sum, s) => sum + Math.round(state.metrics.totalCapacity * s.ratio),
+                            0,
+                          );
                         // Insert section marker at cursor or jump to offset
                         if (editorRef.current) {
                           const el = editorRef.current.element;
@@ -530,7 +701,17 @@ export function EditorPage(): ReactElement {
                             const text = el.innerText ?? '';
                             if (text.length <= offset) {
                               // Pad with newlines and insert marker
-                              const pad = offset > text.length ? '\n'.repeat(Math.max(1, Math.ceil((offset - text.length) / state.settings.lineLength))) : '';
+                              const pad =
+                                offset > text.length
+                                  ? '\n'.repeat(
+                                      Math.max(
+                                        1,
+                                        Math.ceil(
+                                          (offset - text.length) / state.settings.lineLength,
+                                        ),
+                                      ),
+                                    )
+                                  : '';
                               editorRef.current.insertText(`${pad}\n【${seg.label}】`);
                             } else {
                               // Place cursor at the offset position
@@ -562,7 +743,9 @@ export function EditorPage(): ReactElement {
                         borderRadius: 'var(--radius-sm)',
                         border: '1px solid var(--color-border)',
                         cursor: 'pointer',
-                        backgroundColor: isActive ? 'var(--color-primary-light, #dbeafe)' : 'var(--color-bg-primary)',
+                        backgroundColor: isActive
+                          ? 'var(--color-primary-light, #dbeafe)'
+                          : 'var(--color-bg-primary)',
                         color: isActive ? 'var(--color-primary, #2563eb)' : 'var(--text-secondary)',
                         fontWeight: isActive ? 600 : 400,
                       }}
@@ -593,7 +776,8 @@ export function EditorPage(): ReactElement {
               />
             )}
             <p className="status-text" style={{ marginTop: 'var(--space-sm)' }}>
-              文字数: {contentLength} / 行数: {state.metrics.currentLines} / 目安容量: {state.metrics.totalCapacity}字 ({state.settings.pageCount}枚) / 残り: {remaining}字
+              文字数: {contentLength} / 行数: {state.metrics.currentLines} / 目安容量:{' '}
+              {state.metrics.totalCapacity}字 ({state.settings.pageCount}枚) / 残り: {remaining}字
             </p>
           </ContentCommentary>
         </section>
@@ -616,7 +800,14 @@ export function EditorPage(): ReactElement {
         {/* ── ツール ── */}
         <section className="section-container" aria-label="ツール">
           <h3>ツール</h3>
-          <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 'var(--space-sm)',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+            }}
+          >
             <button type="button" onClick={() => fileInputRef.current?.click()}>
               Word読み込み
             </button>
@@ -662,7 +853,16 @@ export function EditorPage(): ReactElement {
               ダウンロード
             </button>
             {exportPreview && (
-              <button type="button" onClick={() => setExportPreview('')} style={{ fontSize: '0.75rem', backgroundColor: 'transparent', border: '1px solid var(--color-border)', color: 'var(--text-secondary)' }}>
+              <button
+                type="button"
+                onClick={() => setExportPreview('')}
+                style={{
+                  fontSize: '0.75rem',
+                  backgroundColor: 'transparent',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--text-secondary)',
+                }}
+              >
                 プレビューを閉じる
               </button>
             )}

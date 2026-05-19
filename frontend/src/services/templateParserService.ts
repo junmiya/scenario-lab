@@ -39,11 +39,11 @@ function getParagraphText(p: Element): string {
 // ────────────────────────────────────────
 
 const FIELD_PATTERNS: { field: MappedField; pattern: RegExp; action: FieldMapping['action'] }[] = [
-  { field: 'title',         pattern: /タイトル|題名|作品名/,             action: 'replace' },
-  { field: 'authorName',    pattern: /名前|氏名|著者|作者/,             action: 'replace' },
-  { field: 'characterText', pattern: /登場人物/,                        action: 'insertAfter' },
-  { field: 'synopsis',      pattern: /あらすじ|梗概|概要/,              action: 'insertAfter' },
-  { field: 'content',       pattern: /本文|シナリオ/,                   action: 'replace' },
+  { field: 'title', pattern: /タイトル|題名|作品名/, action: 'replace' },
+  { field: 'authorName', pattern: /名前|氏名|著者|作者/, action: 'replace' },
+  { field: 'characterText', pattern: /登場人物/, action: 'insertAfter' },
+  { field: 'synopsis', pattern: /あらすじ|梗概|概要/, action: 'insertAfter' },
+  { field: 'content', pattern: /本文|シナリオ/, action: 'replace' },
 ];
 
 interface ParagraphInfo {
@@ -55,8 +55,7 @@ interface ParagraphInfo {
 }
 
 function parseParagraphs(doc: Document): ParagraphInfo[] {
-  const body = doc.getElementsByTagNameNS(W_NS, 'body')[0]
-    ?? doc.getElementsByTagName('w:body')[0];
+  const body = doc.getElementsByTagNameNS(W_NS, 'body')[0] ?? doc.getElementsByTagName('w:body')[0];
   if (!body) return [];
 
   const result: ParagraphInfo[] = [];
@@ -149,7 +148,9 @@ export function detectFieldMappings(doc: Document): FieldMapping[] {
 // グリッド値の解析（UI表示用）
 // ────────────────────────────────────────
 
-async function extractDisplayValues(zip: JSZip): Promise<{ lineLength: number | null; linesPerPage: number | null; fontEastAsia: string }> {
+async function extractDisplayValues(
+  zip: JSZip,
+): Promise<{ lineLength: number | null; linesPerPage: number | null; fontEastAsia: string }> {
   let lineLength: number | null = null;
   let linesPerPage: number | null = null;
   let fontEastAsia = '游明朝';
@@ -173,10 +174,10 @@ async function extractDisplayValues(zip: JSZip): Promise<{ lineLength: number | 
       const cs = numAttr(docGrid, W_NS, 'charSpace');
       const gridType = getAttr(docGrid, W_NS, 'type');
 
-      const pgSz = (bodySectPr.getElementsByTagNameNS(W_NS, 'pgSz')[0]
-        ?? bodySectPr.getElementsByTagName('w:pgSz')[0]) as Element | undefined;
-      const pgMar = (bodySectPr.getElementsByTagNameNS(W_NS, 'pgMar')[0]
-        ?? bodySectPr.getElementsByTagName('w:pgMar')[0]) as Element | undefined;
+      const pgSz = (bodySectPr.getElementsByTagNameNS(W_NS, 'pgSz')[0] ??
+        bodySectPr.getElementsByTagName('w:pgSz')[0]) as Element | undefined;
+      const pgMar = (bodySectPr.getElementsByTagNameNS(W_NS, 'pgMar')[0] ??
+        bodySectPr.getElementsByTagName('w:pgMar')[0]) as Element | undefined;
 
       if (pgSz && pgMar && lp && lp > 0) {
         const pw = numAttr(pgSz, W_NS, 'w') ?? 0;
@@ -196,13 +197,14 @@ async function extractDisplayValues(zip: JSZip): Promise<{ lineLength: number | 
             const stylesDoc = parser.parseFromString(stylesText, 'application/xml');
             for (const sz of findElements(stylesDoc, 'sz')) {
               const val = numAttr(sz, W_NS, 'val');
-              if (val !== null) { fsPt = val / 2; break; }
+              if (val !== null) {
+                fsPt = val / 2;
+                break;
+              }
             }
           }
           const fontTwips = fsPt * 20;
-          const charPitch = gridType === 'snapToChars'
-            ? fontTwips + cs / 204.8
-            : cs + fontTwips;
+          const charPitch = gridType === 'snapToChars' ? fontTwips + cs / 204.8 : cs + fontTwips;
           if (charPitch > 0) lineLength = Math.round((ph - mt - mb) / charPitch);
         }
       }
@@ -211,7 +213,10 @@ async function extractDisplayValues(zip: JSZip): Promise<{ lineLength: number | 
 
   for (const rf of findElements(doc, 'rFonts')) {
     const ea = getAttr(rf, W_NS, 'eastAsia');
-    if (ea) { fontEastAsia = ea; break; }
+    if (ea) {
+      fontEastAsia = ea;
+      break;
+    }
   }
 
   return { lineLength, linesPerPage, fontEastAsia };
