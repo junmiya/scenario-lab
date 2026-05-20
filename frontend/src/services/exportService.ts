@@ -433,6 +433,36 @@ export async function createExportFromTemplate(
 }
 
 // ────────────────────────────────────────
+// テキストエクスポート（プレーンテキスト）
+// ────────────────────────────────────────
+
+export function createTextExportPayload(input: ExportInput): ExportPayload {
+  assertRequiredMetadata(input);
+
+  const lines: string[] = [];
+  lines.push(input.title);
+  lines.push(`作　${input.authorName}`);
+  lines.push('');
+
+  if (input.characterText.trim()) {
+    lines.push('【登場人物】');
+    lines.push(input.characterText);
+    lines.push('');
+  }
+
+  if (input.synopsis.trim()) {
+    lines.push('【あらすじ】');
+    lines.push(input.synopsis);
+    lines.push('');
+  }
+
+  lines.push(input.content);
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+  return { fileName: `${sanitizeFileName(input.title)}.txt`, blob };
+}
+
+// ────────────────────────────────────────
 // Save As ダイアログ
 // ────────────────────────────────────────
 
@@ -444,16 +474,22 @@ export async function savePayloadAs(payload: ExportPayload): Promise<string> {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const picker = (window as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>)
         .showSaveFilePicker;
+      const isText = payload.fileName.endsWith('.txt');
+      const fileTypes = isText
+        ? [{ description: 'テキストファイル', accept: { 'text/plain': ['.txt'] as string[] } }]
+        : [
+            {
+              description: 'Word文書',
+              accept: {
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [
+                  '.docx',
+                ] as string[],
+              },
+            },
+          ];
       const handle = (await picker!({
         suggestedName: payload.fileName,
-        types: [
-          {
-            description: 'Word文書',
-            accept: {
-              'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-            },
-          },
-        ],
+        types: fileTypes,
       })) as {
         name: string;
         createWritable: () => Promise<{

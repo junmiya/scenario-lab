@@ -34,6 +34,7 @@ import {
 import {
   createExportPayload,
   createExportFromTemplate,
+  createTextExportPayload,
   savePayloadAs,
 } from '../services/exportService';
 import { extractTextFromDocx } from '../services/importService';
@@ -315,6 +316,30 @@ export function EditorPage(): ReactElement {
             selectedPreset.fieldMappings ?? [],
           )
         : await createExportPayload(exportInput);
+      const savedName = await savePayloadAs(payload);
+      if (savedName) {
+        setExportMessage(`${savedName} を保存しました`);
+      } else {
+        setExportMessage('');
+      }
+    } catch (error) {
+      setExportMessage(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const onDownloadText = async (): Promise<void> => {
+    try {
+      setExportMessage('テキスト書き出し中...');
+      const exportInput = {
+        title: state.title || 'untitled-script',
+        authorName: state.authorName || 'unknown-author',
+        synopsis: state.synopsis,
+        characterText: state.characterText,
+        content: state.content,
+        lineLength: state.settings.lineLength,
+        linesPerPage: state.settings.linesPerPage,
+      };
+      const payload = createTextExportPayload(exportInput);
       const savedName = await savePayloadAs(payload);
       if (savedName) {
         setExportMessage(`${savedName} を保存しました`);
@@ -850,7 +875,10 @@ export function EditorPage(): ReactElement {
               書き出しプレビュー
             </button>
             <button type="button" onClick={() => void onDownload()}>
-              ダウンロード
+              Word ダウンロード
+            </button>
+            <button type="button" onClick={() => void onDownloadText()}>
+              テキスト ダウンロード
             </button>
             {exportPreview && (
               <button
