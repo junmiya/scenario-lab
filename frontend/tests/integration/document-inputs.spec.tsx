@@ -52,14 +52,14 @@ function renderEditor() {
 describe('ドキュメント管理セクション入力検証', () => {
   it('タイトル: 日本語テキストを入力できる', () => {
     renderEditor();
-    const input = screen.getByPlaceholderText('脚本タイトル');
+    const input = screen.getByPlaceholderText('タイトル');
     fireEvent.change(input, { target: { value: '吾輩は猫である' } });
     expect((input as HTMLInputElement).value).toBe('吾輩は猫である');
   });
 
   it('タイトル: スペースを含むテキストを入力できる', () => {
     renderEditor();
-    const input = screen.getByPlaceholderText('脚本タイトル');
+    const input = screen.getByPlaceholderText('タイトル');
     fireEvent.change(input, { target: { value: 'タイトル テスト　全角スペース' } });
     expect((input as HTMLInputElement).value).toBe('タイトル テスト　全角スペース');
   });
@@ -100,7 +100,7 @@ describe('ドキュメント管理セクション入力検証', () => {
 
   it('全フィールドに同時に値を保持できる', () => {
     const { container } = renderEditor();
-    const title = screen.getByPlaceholderText('脚本タイトル');
+    const title = screen.getByPlaceholderText('タイトル');
     const author = screen.getByPlaceholderText('著者名');
 
     fireEvent.change(title, { target: { value: 'テスト脚本' } });
