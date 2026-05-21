@@ -1,13 +1,13 @@
 /**
  * ドキュメント管理セクションの入力検証テスト
- * - タイトル: 文字入力・スペース
- * - 著者: 文字入力・スペース
- * - あらすじ: contenteditable VerticalEditor への入力
+ * - タイトル: VerticalEditor (contenteditable) への入力
+ * - 著者: VerticalEditor (contenteditable) への入力
+ * - あらすじ: VerticalEditor (contenteditable) への入力
  *
  * @vitest-environment happy-dom
  */
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 // Mock Firebase modules to prevent initialization errors in test environment
@@ -49,48 +49,55 @@ function renderEditor() {
   );
 }
 
+function getByDataPlaceholder(container: HTMLElement, placeholder: string): HTMLElement {
+  const el = container.querySelector(`[data-placeholder="${placeholder}"]`);
+  if (!el) throw new Error(`Element with data-placeholder="${placeholder}" not found`);
+  return el as HTMLElement;
+}
+
 describe('ドキュメント管理セクション入力検証', () => {
-  it('タイトル: 日本語テキストを入力できる', () => {
-    renderEditor();
-    const input = screen.getByPlaceholderText('脚本タイトル');
-    fireEvent.change(input, { target: { value: '吾輩は猫である' } });
-    expect((input as HTMLInputElement).value).toBe('吾輩は猫である');
-  });
-
-  it('タイトル: スペースを含むテキストを入力できる', () => {
-    renderEditor();
-    const input = screen.getByPlaceholderText('脚本タイトル');
-    fireEvent.change(input, { target: { value: 'タイトル テスト　全角スペース' } });
-    expect((input as HTMLInputElement).value).toBe('タイトル テスト　全角スペース');
-  });
-
-  it('著者: 日本語テキストを入力できる', () => {
-    renderEditor();
-    const input = screen.getByPlaceholderText('著者名');
-    fireEvent.change(input, { target: { value: '夏目漱石' } });
-    expect((input as HTMLInputElement).value).toBe('夏目漱石');
-  });
-
-  it('著者: スペースを含むテキストを入力できる', () => {
-    renderEditor();
-    const input = screen.getByPlaceholderText('著者名');
-    fireEvent.change(input, { target: { value: '山田 太郎' } });
-    expect((input as HTMLInputElement).value).toBe('山田 太郎');
-  });
-
-  it('あらすじ: VerticalEditor contenteditable が存在する', () => {
+  it('タイトル: contenteditable が存在し編集可能', () => {
     const { container } = renderEditor();
-    const editor = container.querySelector('[data-placeholder="あらすじを入力..."]');
+    const editor = getByDataPlaceholder(container, 'タイトル');
+    expect(editor.getAttribute('contenteditable')).toBe('true');
+  });
+
+  it('タイトル: テキスト入力をシミュレートできる', () => {
+    const { container } = renderEditor();
+    const editor = getByDataPlaceholder(container, 'タイトル');
+    act(() => {
+      editor.innerText = '吾輩は猫である';
+      fireEvent.input(editor);
+    });
+    expect(editor.innerText).toBe('吾輩は猫である');
+  });
+
+  it('著者: contenteditable が存在し編集可能', () => {
+    const { container } = renderEditor();
+    const editor = getByDataPlaceholder(container, '著者名');
+    expect(editor.getAttribute('contenteditable')).toBe('true');
+  });
+
+  it('著者: テキスト入力をシミュレートできる', () => {
+    const { container } = renderEditor();
+    const editor = getByDataPlaceholder(container, '著者名');
+    act(() => {
+      editor.innerText = '夏目漱石';
+      fireEvent.input(editor);
+    });
+    expect(editor.innerText).toBe('夏目漱石');
+  });
+
+  it('あらすじ: contenteditable が存在し編集可能', () => {
+    const { container } = renderEditor();
+    const editor = getByDataPlaceholder(container, 'あらすじを入力...');
     expect(editor).toBeTruthy();
-    expect(editor?.getAttribute('contenteditable')).toBe('true');
+    expect(editor.getAttribute('contenteditable')).toBe('true');
   });
 
   it('あらすじ: テキスト入力をシミュレートできる', () => {
     const { container } = renderEditor();
-    const editor = container.querySelector(
-      '[data-placeholder="あらすじを入力..."]',
-    ) as HTMLDivElement;
-    expect(editor).toBeTruthy();
+    const editor = getByDataPlaceholder(container, 'あらすじを入力...');
     act(() => {
       editor.innerText = 'ある日突然猫になった男の物語。';
       fireEvent.input(editor);
@@ -98,20 +105,14 @@ describe('ドキュメント管理セクション入力検証', () => {
     expect(editor.innerText).toBe('ある日突然猫になった男の物語。');
   });
 
-  it('全フィールドに同時に値を保持できる', () => {
+  it('全フィールドが同時に編集可能', () => {
     const { container } = renderEditor();
-    const title = screen.getByPlaceholderText('脚本タイトル');
-    const author = screen.getByPlaceholderText('著者名');
+    const title = getByDataPlaceholder(container, 'タイトル');
+    const author = getByDataPlaceholder(container, '著者名');
+    const synopsis = getByDataPlaceholder(container, 'あらすじを入力...');
 
-    fireEvent.change(title, { target: { value: 'テスト脚本' } });
-    fireEvent.change(author, { target: { value: 'テスト著者' } });
-
-    expect((title as HTMLInputElement).value).toBe('テスト脚本');
-    expect((author as HTMLInputElement).value).toBe('テスト著者');
-
-    // Synopsis VerticalEditor exists and is editable
-    const synopsisEditor = container.querySelector('[data-placeholder="あらすじを入力..."]');
-    expect(synopsisEditor).toBeTruthy();
-    expect(synopsisEditor?.getAttribute('contenteditable')).toBe('true');
+    expect(title.getAttribute('contenteditable')).toBe('true');
+    expect(author.getAttribute('contenteditable')).toBe('true');
+    expect(synopsis.getAttribute('contenteditable')).toBe('true');
   });
 });
