@@ -439,66 +439,15 @@ export function EditorPage(): ReactElement {
       }
     >
       <main className="main-container">
-        {/* ── タイトル・著者 ── */}
-        <section className="section-container" aria-label="タイトル・著者">
-          <h3>タイトル・著者</h3>
-          <div style={{ display: 'flex', gap: 'var(--space-md)', direction: 'rtl' }}>
-            <div style={{ flex: 1, direction: 'ltr' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem' }}>タイトル</label>
-              <VerticalEditor
-                value={state.title}
-                onChange={(value) => setState((current) => ({ ...current, title: value }))}
-                lineCount={3}
-                charsPerColumn={state.settings.lineLength}
-                placeholder="タイトル"
-              />
-            </div>
-            <div style={{ flex: 1, direction: 'ltr' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem' }}>著者</label>
-              <VerticalEditor
-                value={state.authorName}
-                onChange={(value) => setState((current) => ({ ...current, authorName: value }))}
-                lineCount={2}
-                charsPerColumn={state.settings.lineLength}
-                placeholder="著者名"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* ── 登場人物 ── */}
-        <section className="section-container" aria-label="登場人物">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3>登場人物</h3>
-            <Settings
-              value={state.characterSettings}
-              onChange={(value) => setState((current) => updateCharacterSettings(current, value))}
-              hideLineLength
-            />
-          </div>
-          <VerticalEditor
-            value={state.characterText}
-            onChange={(value) => setState((current) => updateCharacterText(current, value))}
-            lineCount={Math.max(
-              5,
-              state.characterMetrics.currentLines,
-              state.characterSettings.pageCount * 20,
-            )}
-            charsPerColumn={state.characterSettings.lineLength}
-            placeholder="登場人物を入力..."
-          />
-          <p className="status-text" style={{ marginTop: 'var(--space-sm)' }}>
-            文字数: {characterContentLength} / 行数: {state.characterMetrics.currentLines} /
-            目安容量: {state.characterMetrics.totalCapacity}字 ({state.characterSettings.pageCount}
-            枚) / 残り: {characterRemaining}字
-          </p>
-          {/* 設定（字数/行、行数/枚） */}
+        {/* ── 書式設定 ── */}
+        <section className="section-container" aria-label="書式設定">
+          <h3>書式設定</h3>
           <div
             style={{
               display: 'flex',
-              gap: 'var(--space-md)',
+              gap: 'var(--space-lg)',
               alignItems: 'end',
-              marginTop: '0.75rem',
+              flexWrap: 'wrap',
             }}
           >
             <label style={{ fontSize: '0.8125rem' }}>
@@ -553,11 +502,84 @@ export function EditorPage(): ReactElement {
                 style={{ width: '4rem' }}
               />
             </label>
-            <span style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)' }}>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-secondary)',
+                borderLeft: '1px solid var(--color-border)',
+                paddingLeft: 'var(--space-md)',
+              }}
+            >
               1枚 = {state.settings.lineLength}字 × {state.settings.linesPerPage}行 ={' '}
               {state.settings.lineLength * state.settings.linesPerPage}字
             </span>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-secondary)',
+                borderLeft: '1px solid var(--color-border)',
+                paddingLeft: 'var(--space-md)',
+              }}
+            >
+              あらすじ {state.synopsisSettings.pageCount}枚 / 登場人物{' '}
+              {state.characterSettings.pageCount}枚 / 本文 {state.settings.pageCount}枚
+            </span>
           </div>
+        </section>
+
+        {/* ── タイトル・著者 ── */}
+        <section className="section-container" aria-label="タイトル・著者">
+          <h3>タイトル・著者</h3>
+          <div style={{ display: 'flex', gap: 'var(--space-md)', direction: 'rtl' }}>
+            <div style={{ flex: 1, direction: 'ltr' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem' }}>タイトル</label>
+              <VerticalEditor
+                value={state.title}
+                onChange={(value) => setState((current) => ({ ...current, title: value }))}
+                lineCount={3}
+                charsPerColumn={state.settings.lineLength}
+                placeholder="タイトル"
+              />
+            </div>
+            <div style={{ flex: 1, direction: 'ltr' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem' }}>著者</label>
+              <VerticalEditor
+                value={state.authorName}
+                onChange={(value) => setState((current) => ({ ...current, authorName: value }))}
+                lineCount={2}
+                charsPerColumn={state.settings.lineLength}
+                placeholder="著者名"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* ── 登場人物 ── */}
+        <section className="section-container" aria-label="登場人物">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3>登場人物</h3>
+            <Settings
+              value={state.characterSettings}
+              onChange={(value) => setState((current) => updateCharacterSettings(current, value))}
+              hideLineLength
+            />
+          </div>
+          <VerticalEditor
+            value={state.characterText}
+            onChange={(value) => setState((current) => updateCharacterText(current, value))}
+            lineCount={Math.max(
+              5,
+              state.characterMetrics.currentLines,
+              state.characterSettings.pageCount * 20,
+            )}
+            charsPerColumn={state.characterSettings.lineLength}
+            placeholder="登場人物を入力..."
+          />
+          <p className="status-text" style={{ marginTop: 'var(--space-sm)' }}>
+            文字数: {characterContentLength} / 行数: {state.characterMetrics.currentLines} /
+            目安容量: {state.characterMetrics.totalCapacity}字 ({state.characterSettings.pageCount}
+            枚) / 残り: {characterRemaining}字
+          </p>
         </section>
 
         {/* ── あらすじ ── */}
