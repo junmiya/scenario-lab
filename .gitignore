@@ -8,6 +8,12 @@ Thumbs.db
 # Environment variables
 .env
 .env.local
+.env.*.local
+
+# Service account private keys — NEVER commit
+*-firebase-adminsdk-*.json
+serviceAccount*.json
+*-service-account*.json
 
 # Build output
 dist/
