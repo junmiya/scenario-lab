@@ -27,9 +27,9 @@ description: "Task list for 小説モード追加（脚本／小説の分離）"
 
 **Purpose**: モードレジストリ層の骨組みと型定義
 
-- [ ] T001 [P] `frontend/src/modes/types.ts` に `ModeProfile` / `ToolbarActionDef` / `StructureDef` / `PromptSet` / `ExportPresetDef` 型を定義（[data-model.md](./data-model.md) §9 準拠）
-- [ ] T002 [P] `frontend/src/modes/index.ts` に `contentType → ModeProfile` 解決レジストリのスケルトン（未登録時は screenplay フォールバック）を作成
-- [ ] T003 [P] `functions/src/advice/prompts/` ディレクトリを作成し、空の `screenplay.ts` / `novel.ts` をプレースホルダ追加
+- [x] T001 [P] `frontend/src/modes/types.ts` に `ModeProfile` / `ToolbarActionDef` / `StructureDef` / `PromptSet` / `ExportPresetDef` 型を定義（[data-model.md](./data-model.md) §9 準拠）
+- [x] T002 [P] `frontend/src/modes/index.ts` に `contentType → ModeProfile` 解決レジストリのスケルトン（未登録時は screenplay フォールバック）を作成
+- [x] T003 [P] `functions/src/advice/prompts/` ディレクトリを作成し、空の `screenplay.ts` / `novel.ts` をプレースホルダ追加
 
 **Checkpoint**: modes レイヤの型・レジストリが import 可能
 
@@ -41,36 +41,36 @@ description: "Task list for 小説モード追加（脚本／小説の分離）"
 
 ### contentType データ基盤（FR-001, FR-002, FR-005）
 
-- [ ] T004 `frontend/src/lib/firebase/firestoreService.ts` の `FirestoreScript` に `contentType?: 'screenplay' | 'novel'` を追加し、`getScript`/`listScripts` の読み取りで未設定→`'screenplay'` フォールバックを実装
-- [ ] T005 `frontend/src/lib/firebase/firestoreService.ts` の `createScript` に `contentType` 引数を追加（既定 `'screenplay'`、作成時のみ書込）
-- [ ] T006 `frontend/src/stores/editorStore.ts` の `EditorState` に `contentType` を追加し、`createInitialEditorState` を `contentType` 受け取り対応に拡張
-- [ ] T007 `firestore.rules` の `scripts/{id}` update ルールに `contentType` 不変性検証（既存値がある場合は変更不可）を追加（[contracts/migration.md](./contracts/migration.md) §ルール変更）
+- [x] T004 `frontend/src/lib/firebase/firestoreService.ts` の `FirestoreScript` に `contentType?: 'screenplay' | 'novel'` を追加し、`getScript`/`listScripts` の読み取りで未設定→`'screenplay'` フォールバックを実装
+- [x] T005 `frontend/src/lib/firebase/firestoreService.ts` の `createScript` に `contentType` 引数を追加（既定 `'screenplay'`、作成時のみ書込）
+- [x] T006 `frontend/src/stores/editorStore.ts` の `EditorState` に `contentType` を追加し、`createInitialEditorState` を `contentType` 受け取り対応に拡張
+- [x] T007 `firestore.rules` の `scripts/{id}` update ルールに `contentType` 不変性検証（既存値がある場合は変更不可）を追加（[contracts/migration.md](./contracts/migration.md) §ルール変更）
 
 ### 脚本ロジックの純粋移設（R-08・挙動不変）
 
-- [ ] T008 [P] `frontend/src/modes/screenplay/toolbar.ts` に `ScriptToolbar` の `INSERT_TEMPLATES`（柱○/セリフ「」/ト書き）を移設
-- [ ] T009 [P] `frontend/src/modes/screenplay/structure.ts` に `StructurePanel` の起承転結セグメント（25/35/20/20）を移設
-- [ ] T010 [P] `frontend/src/modes/screenplay/prompts.ts` に `adviceService.ts` の `STRUCTURE_PROMPT`/`EMOTIONAL_PROMPT` を移設
-- [ ] T011 [P] `frontend/src/modes/screenplay/exportProfile.ts` に `exportService.ts` の縦書き脚本グリッド設定を移設
-- [ ] T012 [P] `frontend/src/modes/screenplay/defaults.ts` に脚本デフォルト（20字×20行×10枚）を移設
-- [ ] T013 `functions/src/advice/prompts/screenplay.ts` に functions 側の脚本プロンプトを集約し、`providerGateway.ts` から参照する形にリファクタ
-- [ ] T014 `frontend/src/modes/index.ts` に screenplay `ModeProfile` を登録（T008〜T012 を束ねる）
+- [x] T008 [P] `frontend/src/modes/screenplay/toolbar.ts` に `ScriptToolbar` の `INSERT_TEMPLATES`（柱○/セリフ「」/ト書き）を移設
+- [x] T009 [P] `frontend/src/modes/screenplay/structure.ts` に `StructurePanel` の起承転結セグメント（25/35/20/20）を移設
+- [x] T010 [P] `frontend/src/modes/screenplay/prompts.ts` に `adviceService.ts` の `STRUCTURE_PROMPT`/`EMOTIONAL_PROMPT` を移設
+- [x] T011 [P] `frontend/src/modes/screenplay/exportProfile.ts` に `exportService.ts` の縦書き脚本グリッド設定を移設
+- [x] T012 [P] `frontend/src/modes/screenplay/defaults.ts` に脚本デフォルト（20字×20行×10枚）を移設
+- [x] T013 `functions/src/advice/prompts/screenplay.ts` に functions 側の脚本プロンプトを集約し、`providerGateway.ts` から参照する形にリファクタ
+- [x] T014 `frontend/src/modes/index.ts` に screenplay `ModeProfile` を登録（T008〜T012 を束ねる）
 
 ### モード対応の既存コンポーネント汎用化（FR-004）
 
 - [ ] T015 `frontend/src/components/toolbar/ScriptToolbar.tsx` を `ModeProfile.toolbar` 参照に汎用化（脚本挙動は不変）
 - [ ] T016 `frontend/src/components/structure/StructurePanel.tsx` を `ModeProfile.structure` 参照に汎用化
-- [ ] T017 `frontend/src/services/adviceService.ts` を `contentType` 引数追加＋`modes/*/prompts` 参照に汎用化（フォールバック維持）
+- [x] T017 `frontend/src/services/adviceService.ts` を `contentType` 引数追加＋`modes/*/prompts` 参照に汎用化（フォールバック維持）
 - [ ] T018 `frontend/src/services/exportService.ts` を `ModeProfile.exportProfile` 分岐に汎用化（脚本出力は不変）
 
 ### Feature Flag とロールバック（R-07, CA-005）
 
-- [ ] T019 [P] `frontend/src/lib/firebase/firestoreService.ts` の `FeatureFlags` と `DEFAULT_FLAGS`、`frontend/src/contexts/FeatureFlagsContext.tsx` に `novelMode: boolean`（既定 true）を追加
+- [x] T019 [P] `frontend/src/lib/firebase/firestoreService.ts` の `FeatureFlags` と `DEFAULT_FLAGS`、`frontend/src/contexts/FeatureFlagsContext.tsx` に `novelMode: boolean`（既定 true）を追加
 - [ ] T020 [P] `functions/src/common/logging` を使う AI 呼び出しの `buildLogContext` に `contentType` フィールドを追加（[contracts/advice-api.md](./contracts/advice-api.md) 構造化ログ）
 
 ### 移設リグレッション保証テスト（R-08, SC-005）
 
-- [ ] T021 [P] `frontend/tests/unit/modes/screenplay.snapshot.test.ts` に移設前後で脚本プロファイル（toolbar/structure/prompts/export/defaults）が同値であることのスナップショットテストを追加
+- [x] T021 [P] `frontend/tests/unit/modes/screenplay.snapshot.test.ts` に移設前後で脚本プロファイル（toolbar/structure/prompts/export/defaults）が同値であることのスナップショットテストを追加
 
 **Checkpoint**: contentType 基盤が整い、脚本モードが modes レイヤ経由で従来どおり動作する
 
