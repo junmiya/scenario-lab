@@ -20,9 +20,16 @@ import { db } from './config';
 import type { UserProfile, UserRole } from './authService';
 import type { FormatPreset } from '../../types/formatPreset';
 
+export type ContentType = 'screenplay' | 'novel';
+
 export interface FirestoreScript {
   id: string;
   ownerId: string;
+  /**
+   * Document mode. Pre-migration documents have no value and are treated as
+   * 'screenplay' on read (see `resolveScriptContentType`). Immutable after creation.
+   */
+  contentType?: ContentType;
   title: string;
   authorName: string;
   synopsis: string;
@@ -58,6 +65,14 @@ export interface FirestoreScript {
 }
 
 /**
+ * Normalize a possibly-missing contentType from Firestore into a concrete value.
+ * Pre-migration documents have no `contentType` field and are treated as 'screenplay'.
+ */
+export function resolveScriptContentType(value: ContentType | undefined | null): ContentType {
+  return value === 'novel' ? 'novel' : 'screenplay';
+}
+
+/**
  * Create a new script document in Firestore.
  */
 export async function createScript(
@@ -66,12 +81,15 @@ export async function createScript(
     title: string;
     authorName: string;
     settings: { lineLength: number; pageCount: number };
+    contentType?: ContentType;
   },
 ): Promise<string> {
   const docRef = doc(collection(db, 'scripts'));
+  const contentType = resolveScriptContentType(data.contentType);
   const newScript: Omit<FirestoreScript, 'id'> = {
     ownerId,
-    title: data.title || '無題の脚本',
+    contentType,
+    title: data.title || (contentType === 'novel' ? '無題の小説' : '無題の脚本'),
     authorName: data.authorName || '',
     synopsis: '',
     content: '',
@@ -97,7 +115,12 @@ export async function listScripts(ownerId: string): Promise<FirestoreScript[]> {
   const snapshot = await getDocs(q);
   const scripts: FirestoreScript[] = [];
   snapshot.forEach((docSnap) => {
-    scripts.push({ id: docSnap.id, ...docSnap.data() } as FirestoreScript);
+    const data = docSnap.data() as Omit<FirestoreScript, 'id'>;
+    scripts.push({
+      id: docSnap.id,
+      ...data,
+      contentType: resolveScriptContentType(data.contentType),
+    } as FirestoreScript);
   });
   return scripts;
 }
@@ -109,7 +132,12 @@ export async function getScript(scriptId: string): Promise<FirestoreScript | nul
   const docRef = doc(db, 'scripts', scriptId);
   const docSnap = await getDoc(docRef);
   if (docSnap.exists()) {
-    return { id: docSnap.id, ...docSnap.data() } as FirestoreScript;
+    const data = docSnap.data() as Omit<FirestoreScript, 'id'>;
+    return {
+      id: docSnap.id,
+      ...data,
+      contentType: resolveScriptContentType(data.contentType),
+    } as FirestoreScript;
   }
   return null;
 }
@@ -210,6 +238,8 @@ export interface FeatureFlags {
   comments: boolean;
   aiAdvice: boolean;
   aiDiscussion: boolean;
+  /** Novel mode UI (mode selection, novel editor, catalog novel filter). Data is retained when off. */
+  novelMode: boolean;
 }
 
 const DEFAULT_FLAGS: FeatureFlags = {
@@ -219,6 +249,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
   comments: true,
   aiAdvice: true,
   aiDiscussion: true,
+  novelMode: true,
 };
 
 export async function getFeatureFlags(): Promise<FeatureFlags> {

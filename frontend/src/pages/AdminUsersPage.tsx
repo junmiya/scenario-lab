@@ -102,6 +102,7 @@ function DashboardTab({
     comments: 'コメント機能',
     aiAdvice: 'AIアドバイス',
     aiDiscussion: 'AI採点者議論',
+    novelMode: '小説モード',
   };
 
   const statItems = [

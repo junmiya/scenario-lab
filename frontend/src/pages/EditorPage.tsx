@@ -124,6 +124,7 @@ export function EditorPage(): ReactElement {
           const charSettings = { ...DEFAULT_CHARACTER_SETTINGS, ...script.characterSettings };
           const characterText = script.characterText || '';
           setState({
+            contentType: script.contentType ?? 'screenplay',
             title: script.title || '',
             authorName: script.authorName || '',
             synopsis: script.synopsis || '',

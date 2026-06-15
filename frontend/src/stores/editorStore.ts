@@ -10,7 +10,10 @@ export interface GuideMetrics {
   currentLines: number;
 }
 
+export type ContentType = 'screenplay' | 'novel';
+
 export interface EditorState {
+  contentType: ContentType;
   title: string;
   authorName: string;
   synopsis: string;
@@ -68,8 +71,9 @@ function calcCapacity(s: EditorSettings): number {
   return s.lineLength * s.linesPerPage * s.pageCount;
 }
 
-export function createInitialEditorState(): EditorState {
+export function createInitialEditorState(contentType: ContentType = 'screenplay'): EditorState {
   return {
+    contentType,
     title: '',
     authorName: '',
     synopsis: '',

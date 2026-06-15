@@ -23,14 +23,20 @@ service cloud.firestore {
             || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin");
     }
 
-    // ── 脚本 ──
+    // ── 脚本・小説（contentType で区別、未設定は脚本扱い） ──
     match /scripts/{scriptId} {
       allow read: if request.auth != null
         && (resource.data.ownerId == request.auth.uid
             || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin");
       allow create: if request.auth != null
         && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if request.auth != null
+      // contentType は作成後に変更不可（既存値がある場合は同値を強制）。
+      allow update: if request.auth != null
+        && (resource.data.ownerId == request.auth.uid
+            || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin")
+        && (!("contentType" in resource.data)
+            || request.resource.data.contentType == resource.data.contentType);
+      allow delete: if request.auth != null
         && (resource.data.ownerId == request.auth.uid
             || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin");
 
