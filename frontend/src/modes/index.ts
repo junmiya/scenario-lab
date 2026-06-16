@@ -4,6 +4,11 @@ import { SCREENPLAY_STRUCTURE } from './screenplay/structure';
 import { SCREENPLAY_PROMPTS } from './screenplay/prompts';
 import { SCREENPLAY_EXPORT_PRESETS } from './screenplay/exportProfile';
 import { SCREENPLAY_DEFAULT_SETTINGS } from './screenplay/defaults';
+import { NOVEL_TOOLBAR_ACTIONS } from './novel/toolbar';
+import { NOVEL_STRUCTURE } from './novel/structure';
+import { NOVEL_PROMPTS } from './novel/prompts';
+import { NOVEL_EXPORT_PRESETS } from './novel/exportProfile';
+import { NOVEL_DEFAULT_SETTINGS } from './novel/defaults';
 
 export type { ContentType, ModeProfile } from './types';
 
@@ -31,12 +36,23 @@ const SCREENPLAY_PROFILE: ModeProfile = {
   },
 };
 
-/**
- * Mode registry. Novel profile is registered in Phase 3 (US1).
- * Until then `getModeProfile('novel')` falls back to the screenplay profile.
- */
+const NOVEL_PROFILE: ModeProfile = {
+  contentType: 'novel',
+  label: '小説',
+  toolbar: NOVEL_TOOLBAR_ACTIONS,
+  structure: NOVEL_STRUCTURE,
+  prompts: NOVEL_PROMPTS,
+  exportPresets: NOVEL_EXPORT_PRESETS,
+  defaults: {
+    settings: NOVEL_DEFAULT_SETTINGS,
+    writingDirection: 'vertical',
+  },
+};
+
+/** Mode registry: contentType → ModeProfile. */
 const MODE_REGISTRY: Partial<Record<ContentType, ModeProfile>> = {
   screenplay: SCREENPLAY_PROFILE,
+  novel: NOVEL_PROFILE,
 };
 
 /** Resolve a mode profile by content type, falling back to screenplay. */

@@ -19,6 +19,7 @@ import {
 import { db } from './config';
 import type { UserProfile, UserRole } from './authService';
 import type { FormatPreset } from '../../types/formatPreset';
+import type { NovelContent, NovelSettings, Worldbuilding } from '../../types/novel';
 
 export type ContentType = 'screenplay' | 'novel';
 
@@ -60,6 +61,11 @@ export interface FirestoreScript {
   contentCommentary?: { director: unknown[]; scriptdoctor: unknown[]; proofreader: unknown[] };
   synopsisCommentary?: { story: unknown[]; producer: unknown[]; proofreader: unknown[] };
   discussionMessages?: unknown[];
+  // ── Novel mode (contentType === 'novel'). Unused for screenplay. ──
+  novelContent?: NovelContent;
+  novelSettings?: NovelSettings;
+  worldbuilding?: Worldbuilding;
+  novelCommentary?: { editor: unknown[]; critic: unknown[] };
   createdAt?: FieldValue | Date;
   updatedAt?: FieldValue | Date;
 }
@@ -162,6 +168,10 @@ export async function updateScript(
       | 'contentCommentary'
       | 'synopsisCommentary'
       | 'discussionMessages'
+      | 'novelContent'
+      | 'novelSettings'
+      | 'worldbuilding'
+      | 'novelCommentary'
     >
   >,
 ): Promise<void> {
