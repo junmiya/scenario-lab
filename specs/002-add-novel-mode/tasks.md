@@ -85,16 +85,16 @@ description: "Task list for 小説モード追加（脚本／小説の分離）"
 ### Tests for User Story 1 ⚠️
 
 - [ ] T022 [P] [US1] `frontend/tests/integration/novelCreateAndPersist.test.ts` に「小説作成→章節編集→保存→再ロードで一致」の統合テストを追加（先に FAIL させる）
-- [ ] T023 [P] [US1] `frontend/tests/unit/modes/novelContent.test.ts` に章・節の追加／並び順／2階層制約のユニットテストを追加
+- [x] T023 [P] [US1] `frontend/tests/unit/modes/novelContent.test.ts` に章・節の追加／並び順／2階層制約のユニットテストを追加
 
 ### Implementation for User Story 1
 
-- [ ] T024 [P] [US1] `frontend/src/lib/firebase/firestoreService.ts` の `FirestoreScript` に `novelContent` / `novelSettings` 型（[data-model.md](./data-model.md) §1-3）を追加し、`updateScript` の許可フィールドに含める
-- [ ] T025 [P] [US1] `frontend/src/modes/novel/defaults.ts` に小説デフォルト（縦書き・20字×20行）を定義
-- [ ] T026 [P] [US1] `frontend/src/modes/novel/toolbar.ts` に「章/節/会話/地の文」挿入アクションを定義（FR-006）
-- [ ] T027 [P] [US1] `frontend/src/modes/novel/structure.ts` に章一覧（章タイトル＋字数・節数・進行率）定義を実装（FR-008）
-- [ ] T028 [US1] `frontend/src/stores/editorStore.ts` に `novelContent` の章・節 CRUD（追加/削除/並び替え/本文更新）と進行率メトリクス（`recalculateGuideMetrics` 流用）を実装
-- [ ] T029 [US1] `frontend/src/modes/index.ts` に novel `ModeProfile`（toolbar/structure/defaults）を登録
+- [x] T024 [P] [US1] `frontend/src/lib/firebase/firestoreService.ts` の `FirestoreScript` に `novelContent` / `novelSettings` 型（[data-model.md](./data-model.md) §1-3）を追加し、`updateScript` の許可フィールドに含める
+- [x] T025 [P] [US1] `frontend/src/modes/novel/defaults.ts` に小説デフォルト（縦書き・20字×20行）を定義
+- [x] T026 [P] [US1] `frontend/src/modes/novel/toolbar.ts` に「章/節/会話/地の文」挿入アクションを定義（FR-006）
+- [x] T027 [P] [US1] `frontend/src/modes/novel/structure.ts` に章一覧（章タイトル＋字数・節数・進行率）定義を実装（FR-008）
+- [x] T028 [US1] `frontend/src/stores/editorStore.ts` に `novelContent` の章・節 CRUD（追加/削除/並び替え/本文更新）と進行率メトリクス（`recalculateGuideMetrics` 流用）を実装
+- [x] T029 [US1] `frontend/src/modes/index.ts` に novel `ModeProfile`（toolbar/structure/defaults）を登録
 - [ ] T030 [P] [US1] `frontend/src/components/editor/ChapterList.tsx`（章一覧パネル）を新規作成
 - [ ] T031 [US1] `frontend/src/components/toolbar/ScriptToolbar.tsx` が小説モード時に章ツールバーを表示するよう分岐（`ModeProfile.toolbar` 経由）
 - [ ] T032 [US1] `frontend/src/pages/CatalogPage.tsx` の「新規作成」にモード選択モーダル（脚本/小説）を追加し、`createScript` に `contentType` を渡す（FR-003）
@@ -104,11 +104,11 @@ description: "Task list for 小説モード追加（脚本／小説の分離）"
 
 #### 設定資料 4 フィールド（FR-015・worldbuilding）
 
-- [ ] T035a [US1] `frontend/src/lib/firebase/firestoreService.ts` の `FirestoreScript` に `worldbuilding` 型（`characters` / `worldview` / `timeline[]` / `glossary[]`、[data-model.md](./data-model.md) §4）を追加し、`updateScript` の許可フィールドに含める（全て任意項目）
-- [ ] T035b [US1] `frontend/src/stores/editorStore.ts` に worldbuilding（人物/世界観/年表/用語集）の状態と CRUD（年表・用語集の行追加/削除）を追加
+- [x] T035a [US1] `frontend/src/lib/firebase/firestoreService.ts` の `FirestoreScript` に `worldbuilding` 型（`characters` / `worldview` / `timeline[]` / `glossary[]`、[data-model.md](./data-model.md) §4）を追加し、`updateScript` の許可フィールドに含める（全て任意項目）
+- [x] T035b [US1] `frontend/src/stores/editorStore.ts` に worldbuilding（人物/世界観/年表/用語集）の状態と CRUD（年表・用語集の行追加/削除）を追加
 - [ ] T035c [P] [US1] `frontend/src/components/editor/WorldbuildingPanel.tsx` を新規作成（人物=`CharacterTable` 流用、世界観=自由記述、年表=「日時/イベント/関係人物」表、用語集=「用語/読み/説明」表、FR-015）
 - [ ] T035d [US1] `frontend/src/pages/EditorPage.tsx` の小説モード分岐に `WorldbuildingPanel` を組み込む（脚本モードは従来の登場人物表を維持）
-- [ ] T035e [P] [US1] `frontend/tests/unit/worldbuilding.test.ts` に 4 フィールドの CRUD・空許容・行追加削除のユニットテストを追加
+- [x] T035e [P] [US1] `frontend/tests/unit/worldbuilding.test.ts` に 4 フィールドの CRUD・空許容・行追加削除のユニットテストを追加
 
 **Checkpoint**: 小説 MVP が単独で動作・テスト可能（章立て＋設定資料、脚本は無影響）
 
