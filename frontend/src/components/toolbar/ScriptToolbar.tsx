@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 import type { EditorHandle } from '../editor/VerticalEditor';
+import type { ToolbarActionDef } from '../../modes/types';
 
 export type ToolbarAction = 'scene' | 'dialogue' | 'action';
 
@@ -26,19 +27,47 @@ export function insertToolbarAction(handle: EditorHandle, action: ToolbarAction)
 }
 
 interface ScriptToolbarProps {
-  onApply: (action: ToolbarAction) => void;
+  /** Legacy screenplay handler (柱/ト書き/セリフ). Used when `actions` is not provided. */
+  onApply?: (action: ToolbarAction) => void;
+  /** Generic mode-driven actions (e.g. novel 章/節/会話/地の文). From ModeProfile.toolbar. */
+  actions?: ToolbarActionDef[];
+  /** Generic handler invoked with the selected action definition. */
+  onAction?: (action: ToolbarActionDef) => void;
+  label?: string;
 }
 
-export function ScriptToolbar({ onApply }: ScriptToolbarProps): ReactElement {
+/**
+ * Mode-aware insert toolbar. Backward compatible: with no `actions` it renders the
+ * screenplay buttons and calls `onApply`. With `actions` (novel etc.) it renders those
+ * and calls `onAction` — generalized per FR-004 (T031).
+ */
+export function ScriptToolbar({
+  onApply,
+  actions,
+  onAction,
+  label = 'Script toolbar',
+}: ScriptToolbarProps): ReactElement {
+  if (actions && actions.length > 0) {
+    return (
+      <div aria-label={label} className="flex-row">
+        {actions.map((action) => (
+          <button key={action.id} type="button" onClick={() => onAction?.(action)}>
+            {action.label}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div aria-label="Script toolbar" className="flex-row">
-      <button type="button" onClick={() => onApply('scene')}>
+    <div aria-label={label} className="flex-row">
+      <button type="button" onClick={() => onApply?.('scene')}>
         柱
       </button>
-      <button type="button" onClick={() => onApply('action')}>
+      <button type="button" onClick={() => onApply?.('action')}>
         ト書き
       </button>
-      <button type="button" onClick={() => onApply('dialogue')}>
+      <button type="button" onClick={() => onApply?.('dialogue')}>
         セリフ
       </button>
     </div>
