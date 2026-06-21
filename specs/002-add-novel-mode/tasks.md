@@ -114,6 +114,25 @@ description: "Task list for 小説モード追加（脚本／小説の分離）"
 
 ---
 
+## Phase 3.1: US1 精緻化＋バックアップ (Priority: P1+, #12 スコープ・Session 2)
+
+**Goal**: 書字方向を書式設定で初期＋途中変更（ロスレス）、設定資料を方向追従＋テーマ先頭、JSON/Markdown バックアップで完全復元。
+
+**Independent Test**: 縦↔横を切替しても本文が一字も変化しない。テーマ→設定資料を入力し JSON 書き出し→別作品へ復元で完全一致。Markdown も生成される。
+
+- [ ] T080 [US1.1] `frontend/src/types/novel.ts` の `Worldbuilding` に `theme: string` を追加（`createEmptyWorldbuilding` 更新）。`firestoreService` の保存対象に含まれることを確認（FR-027）
+- [ ] T081 [US1.1] `frontend/src/components/editor/WorldbuildingPanel.tsx` を **テーマ → 世界観 → 人物 → 年表 → 用語集** の順に整理し、先頭にテーマ欄を追加（FR-027）
+- [ ] T082 [US1.1] `WorldbuildingPanel` の自由記述フィールド（テーマ/世界観）を `writingDirection` に追従（縦書き時 `writing-mode: vertical-rl`）。表は横組み維持。各フィールドはスキップ可（FR-026）
+- [ ] T083 [US1.1] 書字方向セレクトを本文セクションから **書式設定セクション**（`NovelEditor` 先頭）へ移動。字数/行・行数/枚も novelSettings で設定（FR-007）
+- [ ] T084 [US1.1] 方向変更ロスレス保証: 本文は正準文字列を単一ソース化し、VerticalEditor↔textarea 切替で本文が不変であることを保証。`frontend/tests/unit/novelDirection.test.ts` 追加（FR-007）
+- [ ] T085 [US1.1] `frontend/src/services/novelBackupService.ts` を新規作成: JSON エクスポート（全フィールド）／JSON インポート（完全復元）／Markdown エクスポート（テーマ・あらすじ・設定資料・章節を見出し化、可読・再インポート対象外）（FR-031）
+- [ ] T086 [US1.1] `NovelEditor`（または EditorPage ツール）に「JSON バックアップ」「JSON 復元」「Markdown 書き出し」ボタンを追加し `novelBackupService` と配線（FR-031）
+- [ ] T087 [US1.1] `frontend/tests/unit/novelBackup.test.ts`: JSON export→import 完全一致の往復テストと Markdown 生成検証（FR-031）
+
+**Checkpoint**: #12（US1）完結 — 書式・設定資料・バックアップが揃い、完全復元可能。
+
+---
+
 ## Phase 4: User Story 2 - 小説向け AI アドバイス 2 パネル (Priority: P2)
 
 **Goal**: 編集者／文芸評論家ロールで小説向けアドバイスを 2 パネル取得、脚本プロンプトと混線しない
@@ -136,6 +155,13 @@ description: "Task list for 小説モード追加（脚本／小説の分離）"
 - [ ] T044 [US2] `frontend/src/components/advice/ContentCommentary.tsx`（または対応コンポーネント）を小説モード時に編集者/文芸評論家ラベルで表示するよう分岐
 - [ ] T044a [US2] 小説プロンプトプリセット（スタンダード/文体重視/構成重視）を `frontend/src/modes/novel/prompts.ts` に定義し、既存プリセット基盤（`adviceStore` / プリセット保存・選択）で `contentType` ごとに分離して保存・選択できるようにする（FR-014）
 - [ ] T044b [US2] `frontend/src/components/advice/PartialAdvice.tsx` を小説モードの部分選択プロンプト（FR-011「部分選択向け」）に対応させ、`adviceService` 経由で `contentType` を伝搬
+
+#### AI 拡張（Session 2・US2）
+
+- [ ] T045n [US2] 小説 `NovelEditor` の **あらすじ・本文の上下** に AI アドバイスパネル（`SynopsisCommentary`/`ContentCommentary` 相当）を小説プロンプトで配線（FR-029）
+- [ ] T046n [US2] 小説向け **AI 対話批評**（`DiscussionPanel` 相当）を配線し、筆者の「確認したいこと」入力欄を持たせて対話（FR-030）。`novelCommentary`/`discussionMessages` に保存
+- [ ] T047n [US2] 「**テーマから自動生成**」: テーマを基に AI で 人物名・年表・用語集・あらすじ を生成して各フィールドへ反映（既存値は上書き確認）。`frontend/src/services/novelGenerateService.ts` ＋ WorldbuildingPanel にボタン（FR-028）
+- [ ] T048n [US2] 上記 AI 拡張のテスト（生成サービスのプロンプト・反映、対話入力の往復、混線防止 SC-007）
 
 **Checkpoint**: US1 + US2 が独立動作。AI 応答 < 10 秒（SC-003）
 
