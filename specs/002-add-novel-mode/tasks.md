@@ -120,14 +120,14 @@ description: "Task list for 小説モード追加（脚本／小説の分離）"
 
 **Independent Test**: 縦↔横を切替しても本文が一字も変化しない。テーマ→設定資料を入力し JSON 書き出し→別作品へ復元で完全一致。Markdown も生成される。
 
-- [ ] T080 [US1.1] `frontend/src/types/novel.ts` の `Worldbuilding` に `theme: string` を追加（`createEmptyWorldbuilding` 更新）。`firestoreService` の保存対象に含まれることを確認（FR-027）
-- [ ] T081 [US1.1] `frontend/src/components/editor/WorldbuildingPanel.tsx` を **テーマ → 世界観 → 人物 → 年表 → 用語集** の順に整理し、先頭にテーマ欄を追加（FR-027）
-- [ ] T082 [US1.1] `WorldbuildingPanel` の自由記述フィールド（テーマ/世界観）を `writingDirection` に追従（縦書き時 `writing-mode: vertical-rl`）。表は横組み維持。各フィールドはスキップ可（FR-026）
-- [ ] T083 [US1.1] 書字方向セレクトを本文セクションから **書式設定セクション**（`NovelEditor` 先頭）へ移動。字数/行・行数/枚も novelSettings で設定（FR-007）
-- [ ] T084 [US1.1] 方向変更ロスレス保証: 本文は正準文字列を単一ソース化し、VerticalEditor↔textarea 切替で本文が不変であることを保証。`frontend/tests/unit/novelDirection.test.ts` 追加（FR-007）
-- [ ] T085 [US1.1] `frontend/src/services/novelBackupService.ts` を新規作成: JSON エクスポート（全フィールド）／JSON インポート（完全復元）／Markdown エクスポート（テーマ・あらすじ・設定資料・章節を見出し化、可読・再インポート対象外）（FR-031）
-- [ ] T086 [US1.1] `NovelEditor`（または EditorPage ツール）に「JSON バックアップ」「JSON 復元」「Markdown 書き出し」ボタンを追加し `novelBackupService` と配線（FR-031）
-- [ ] T087 [US1.1] `frontend/tests/unit/novelBackup.test.ts`: JSON export→import 完全一致の往復テストと Markdown 生成検証（FR-031）
+- [x] T080 [US1.1] `frontend/src/types/novel.ts` の `Worldbuilding` に `theme: string` を追加（`createEmptyWorldbuilding` 更新）。`firestoreService` の保存対象に含まれることを確認（FR-027）
+- [x] T081 [US1.1] `frontend/src/components/editor/WorldbuildingPanel.tsx` を **テーマ → 世界観 → 人物 → 年表 → 用語集** の順に整理し、先頭にテーマ欄を追加（FR-027）
+- [x] T082 [US1.1] `WorldbuildingPanel` の自由記述フィールド（テーマ/世界観）を `writingDirection` に追従（縦書き時 `writing-mode: vertical-rl`）。表は横組み維持。各フィールドはスキップ可（FR-026）
+- [x] T083 [US1.1] 書字方向セレクトを本文セクションから **書式設定セクション**（`NovelEditor` 先頭）へ移動。字数/行・行数/枚も novelSettings で設定（FR-007）
+- [x] T084 [US1.1] 方向変更ロスレス保証: 本文は正準文字列を単一ソース化し、VerticalEditor↔textarea 切替で本文が不変であることを保証。`frontend/tests/unit/novelDirection.test.ts` 追加（FR-007）
+- [x] T085 [US1.1] `frontend/src/services/novelBackupService.ts` を新規作成: JSON エクスポート（全フィールド）／JSON インポート（完全復元）／Markdown エクスポート（テーマ・あらすじ・設定資料・章節を見出し化、可読・再インポート対象外）（FR-031）
+- [x] T086 [US1.1] `NovelEditor`（または EditorPage ツール）に「JSON バックアップ」「JSON 復元」「Markdown 書き出し」ボタンを追加し `novelBackupService` と配線（FR-031）
+- [x] T087 [US1.1] `frontend/tests/unit/novelBackup.test.ts`: JSON export→import 完全一致の往復テストと Markdown 生成検証（FR-031）
 
 **Checkpoint**: #12（US1）完結 — 書式・設定資料・バックアップが揃い、完全復元可能。
 
