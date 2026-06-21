@@ -49,6 +49,7 @@ function fromFirestore(doc: Partial<FirestoreScript>): EditorState {
             pageCount: 10,
           },
           worldbuilding: doc.worldbuilding ?? {
+            theme: '',
             characters: [],
             worldview: '',
             timeline: [],
@@ -66,6 +67,7 @@ describe('US1 novel create → edit → save → reload', () => {
     expect(state.novelSettings?.writingDirection).toBe('vertical');
     expect(state.novelContent?.chapters).toEqual([]);
     expect(state.worldbuilding).toEqual({
+      theme: '',
       characters: [],
       worldview: '',
       timeline: [],

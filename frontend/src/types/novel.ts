@@ -69,6 +69,8 @@ export interface GlossaryEntry {
 
 /** Setting reference material. All fields optional (empty is valid). */
 export interface Worldbuilding {
+  /** Work theme — set first; seeds AI auto-generation (FR-027/FR-028). */
+  theme: string;
   characters: WorldbuildingCharacter[];
   worldview: string;
   timeline: TimelineEntry[];
@@ -87,5 +89,5 @@ export function createEmptyNovelContent(): NovelContent {
 }
 
 export function createEmptyWorldbuilding(): Worldbuilding {
-  return { characters: [], worldview: '', timeline: [], glossary: [] };
+  return { theme: '', characters: [], worldview: '', timeline: [], glossary: [] };
 }

@@ -14,6 +14,10 @@ import {
 interface WorldbuildingPanelProps {
   value: Worldbuilding;
   onChange: (value: Worldbuilding) => void;
+  /** Writing direction — free-text fields follow it (FR-026). Tables stay horizontal. */
+  direction?: 'vertical' | 'horizontal';
+  /** Optional AI generate-from-theme action (FR-028, US2). Hidden when undefined. */
+  onGenerateFromTheme?: () => void;
 }
 
 function makeId(prefix: string): string {
@@ -37,23 +41,76 @@ const th: React.CSSProperties = {
 };
 
 /**
- * Novel setting-reference editor (FR-015): 人物 / 世界観 / 年表 / 用語集.
- * All fields optional — empty is valid. Each field is passed to AI advice with its
- * own label in Phase 4 (US2).
+ * Novel setting-reference editor (FR-015 / FR-027): テーマ → 世界観 → 人物 → 年表 → 用語集.
+ * Free-text fields (テーマ・世界観) follow the writing direction (FR-026); structured
+ * tables stay horizontal. All fields optional — empty is valid (skippable).
  */
-export function WorldbuildingPanel({ value, onChange }: WorldbuildingPanelProps): ReactElement {
+export function WorldbuildingPanel({
+  value,
+  onChange,
+  direction = 'vertical',
+  onGenerateFromTheme,
+}: WorldbuildingPanelProps): ReactElement {
   const updateCharacters = (characters: WorldbuildingCharacter[]): void => {
     onChange({ ...value, characters });
+  };
+
+  // Free-text fields adopt vertical writing when in vertical mode (FR-026).
+  const textAreaStyle: React.CSSProperties = {
+    ...cellInput,
+    resize: 'vertical',
+    minHeight: direction === 'vertical' ? '8rem' : '4rem',
+    ...(direction === 'vertical'
+      ? { writingMode: 'vertical-rl', height: '10rem', width: '100%' }
+      : {}),
   };
 
   return (
     <section aria-label="設定資料" className="section-container">
       <h3>設定資料</h3>
 
-      {/* ── 人物 ── */}
+      {/* ── テーマ（最初に設定） ── */}
       <div style={{ marginBottom: 'var(--space-lg)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h4 style={{ margin: '0 0 0.5rem' }}>人物</h4>
+          <h4 style={{ margin: '0 0 0.5rem' }}>テーマ</h4>
+          {onGenerateFromTheme && (
+            <button
+              type="button"
+              onClick={onGenerateFromTheme}
+              title="テーマから 人物・年表・用語集・あらすじ を自動生成"
+              style={{ display: 'flex', gap: '0.25rem' }}
+            >
+              <Plus size={14} /> テーマから自動生成
+            </button>
+          )}
+        </div>
+        <textarea
+          aria-label="テーマ"
+          value={value.theme}
+          onChange={(e) => onChange({ ...value, theme: e.currentTarget.value })}
+          placeholder="作品の主題（例: 喪失と再生、AI と人間の境界...）"
+          rows={2}
+          style={{ ...cellInput, resize: 'vertical', minHeight: '3rem' }}
+        />
+      </div>
+
+      {/* ── 世界観 ── */}
+      <div style={{ marginBottom: 'var(--space-lg)' }}>
+        <h4 style={{ margin: '0 0 0.5rem' }}>世界観</h4>
+        <textarea
+          aria-label="世界観"
+          value={value.worldview}
+          onChange={(e) => onChange(setWorldview(value, e.currentTarget.value))}
+          placeholder="舞台設定・歴史・ルールなどを自由に記述..."
+          rows={4}
+          style={textAreaStyle}
+        />
+      </div>
+
+      {/* ── 登場人物名 ── */}
+      <div style={{ marginBottom: 'var(--space-lg)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h4 style={{ margin: '0 0 0.5rem' }}>登場人物名</h4>
           <button
             type="button"
             onClick={() => updateCharacters([...value.characters, { id: makeId('chr'), name: '' }])}
@@ -149,19 +206,6 @@ export function WorldbuildingPanel({ value, onChange }: WorldbuildingPanelProps)
             </tbody>
           </table>
         )}
-      </div>
-
-      {/* ── 世界観 ── */}
-      <div style={{ marginBottom: 'var(--space-lg)' }}>
-        <h4 style={{ margin: '0 0 0.5rem' }}>世界観</h4>
-        <textarea
-          aria-label="世界観"
-          value={value.worldview}
-          onChange={(e) => onChange(setWorldview(value, e.currentTarget.value))}
-          placeholder="舞台設定・歴史・ルールなどを自由に記述..."
-          rows={4}
-          style={{ ...cellInput, resize: 'vertical', minHeight: '4rem' }}
-        />
       </div>
 
       {/* ── 年表 ── */}

@@ -20,7 +20,15 @@ import {
   createEmptyNovelContent,
   createEmptyWorldbuilding,
   type NovelContent,
+  type NovelSettings,
 } from '../../types/novel';
+import {
+  serializeNovelBackupJson,
+  parseNovelBackupJson,
+  buildNovelMarkdown,
+  downloadTextFile,
+  backupFilename,
+} from '../../services/novelBackupService';
 
 interface NovelEditorProps {
   state: EditorState;
@@ -45,10 +53,74 @@ export function NovelEditor({ state, setState }: NovelEditorProps): ReactElement
 
   const [activeChapterId, setActiveChapterId] = useState<string | null>(null);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  const [backupMessage, setBackupMessage] = useState('');
   const bodyRef = useRef<EditorHandle | null>(null);
+  const importRef = useRef<HTMLInputElement | null>(null);
+
+  const backupInput = () => ({
+    title: state.title,
+    authorName: state.authorName,
+    synopsis: state.synopsis,
+    novelContent,
+    novelSettings: state.novelSettings ?? defaultNovelSettings,
+    worldbuilding,
+  });
+
+  const onExportJson = (): void => {
+    downloadTextFile(
+      backupFilename(state.title, 'json'),
+      serializeNovelBackupJson(backupInput()),
+      'application/json',
+    );
+    setBackupMessage('JSON バックアップを書き出しました');
+  };
+
+  const onExportMarkdown = (): void => {
+    downloadTextFile(
+      backupFilename(state.title, 'md'),
+      buildNovelMarkdown(backupInput()),
+      'text/markdown',
+    );
+    setBackupMessage('Markdown を書き出しました');
+  };
+
+  const onImportJson = async (file: File): Promise<void> => {
+    try {
+      const backup = parseNovelBackupJson(await file.text());
+      if (!confirm('現在の作品を復元データで上書きします。よろしいですか？')) return;
+      setState((current) => ({
+        ...current,
+        contentType: 'novel',
+        title: backup.title,
+        authorName: backup.authorName,
+        synopsis: backup.synopsis,
+        novelContent: backup.novelContent,
+        novelSettings: backup.novelSettings,
+        worldbuilding: backup.worldbuilding,
+      }));
+      setActiveChapterId(null);
+      setActiveSectionId(null);
+      setBackupMessage('JSON から完全復元しました（保存で確定）');
+    } catch (error) {
+      setBackupMessage(`復元に失敗: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
 
   const setNovelContent = (next: NovelContent): void => {
     setState((current) => ({ ...current, novelContent: next }));
+  };
+
+  const defaultNovelSettings: NovelSettings = {
+    writingDirection: 'vertical',
+    lineLength: 20,
+    linesPerPage: 20,
+    pageCount: 10,
+  };
+  const updateNovelSettings = (patch: Partial<NovelSettings>): void => {
+    setState((current) => ({
+      ...current,
+      novelSettings: { ...(current.novelSettings ?? defaultNovelSettings), ...patch },
+    }));
   };
 
   // Resolve the active chapter and (optional) section.
@@ -128,9 +200,58 @@ export function NovelEditor({ state, setState }: NovelEditorProps): ReactElement
 
   return (
     <>
+      {/* ── 書式設定（最初に設定・途中変更可, FR-007） ── */}
+      <section className="section-container" aria-label="書式設定">
+        <h3>書式設定</h3>
+        <div
+          style={{ display: 'flex', gap: 'var(--space-lg)', alignItems: 'end', flexWrap: 'wrap' }}
+        >
+          <label style={{ fontSize: '0.8125rem' }}>
+            書字方向{' '}
+            <select
+              value={direction}
+              onChange={(e) =>
+                updateNovelSettings({
+                  writingDirection: e.currentTarget.value as 'vertical' | 'horizontal',
+                })
+              }
+            >
+              <option value="vertical">縦書き</option>
+              <option value="horizontal">横書き</option>
+            </select>
+          </label>
+          <label style={{ fontSize: '0.8125rem' }}>
+            字数/行
+            <input
+              type="number"
+              min={10}
+              max={40}
+              value={lineLength}
+              onChange={(e) => updateNovelSettings({ lineLength: Number(e.currentTarget.value) })}
+              style={{ width: '4rem' }}
+            />
+          </label>
+          <label style={{ fontSize: '0.8125rem' }}>
+            行数/枚
+            <input
+              type="number"
+              min={1}
+              max={40}
+              value={state.novelSettings?.linesPerPage ?? 20}
+              onChange={(e) => updateNovelSettings({ linesPerPage: Number(e.currentTarget.value) })}
+              style={{ width: '4rem' }}
+            />
+          </label>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+            変更は本文・設定資料の表示のみ切り替え（テキストは保持）
+          </span>
+        </div>
+      </section>
+
       {/* ── 設定資料 ── */}
       <WorldbuildingPanel
         value={worldbuilding}
+        direction={direction}
         onChange={(wb) => setState((current) => ({ ...current, worldbuilding: wb }))}
       />
 
@@ -178,33 +299,11 @@ export function NovelEditor({ state, setState }: NovelEditorProps): ReactElement
           />
         </div>
 
-        {/* 書字方向 */}
+        {/* 総字数（書字方向は書式設定セクションで切替） */}
         <div style={{ display: 'flex', gap: '0.75rem', margin: '0.5rem 0' }}>
-          <label style={{ fontSize: '0.8125rem' }}>
-            書字方向{' '}
-            <select
-              value={direction}
-              onChange={(e) =>
-                setState((current) => ({
-                  ...current,
-                  novelSettings: {
-                    ...(current.novelSettings ?? {
-                      writingDirection: 'vertical',
-                      lineLength: 20,
-                      linesPerPage: 20,
-                      pageCount: 10,
-                    }),
-                    writingDirection: e.currentTarget.value as 'vertical' | 'horizontal',
-                  },
-                }))
-              }
-            >
-              <option value="vertical">縦書き</option>
-              <option value="horizontal">横書き</option>
-            </select>
-          </label>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-            総字数: {novelTotalChars(novelContent)}字
+            総字数: {novelTotalChars(novelContent)}字 ／{' '}
+            {direction === 'vertical' ? '縦書き' : '横書き'}
           </span>
         </div>
 
@@ -243,6 +342,44 @@ export function NovelEditor({ state, setState }: NovelEditorProps): ReactElement
             }}
           />
         )}
+      </section>
+
+      {/* ── バックアップ（JSON 完全復元 / Markdown 可読, FR-031） ── */}
+      <section className="section-container" aria-label="バックアップ">
+        <h3>バックアップ</h3>
+        <div
+          style={{
+            display: 'flex',
+            gap: 'var(--space-sm)',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+          }}
+        >
+          <button type="button" onClick={onExportJson}>
+            JSON バックアップ
+          </button>
+          <button type="button" onClick={() => importRef.current?.click()}>
+            JSON から復元
+          </button>
+          <button type="button" onClick={onExportMarkdown}>
+            Markdown 書き出し
+          </button>
+          <input
+            ref={importRef}
+            type="file"
+            accept=".json,application/json"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.currentTarget.files?.[0];
+              if (file) void onImportJson(file);
+              e.currentTarget.value = '';
+            }}
+          />
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+            JSON は完全復元用、Markdown は閲覧用
+          </span>
+        </div>
+        {backupMessage ? <p className="status-text">{backupMessage}</p> : null}
       </section>
     </>
   );

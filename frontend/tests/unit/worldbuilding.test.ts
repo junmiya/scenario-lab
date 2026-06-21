@@ -13,7 +13,7 @@ import { createEmptyWorldbuilding } from '../../src/types/novel';
 describe('worldbuilding 4-field CRUD (US1 / FR-015)', () => {
   it('starts empty and allows empty save', () => {
     const wb = createEmptyWorldbuilding();
-    expect(wb).toEqual({ characters: [], worldview: '', timeline: [], glossary: [] });
+    expect(wb).toEqual({ theme: '', characters: [], worldview: '', timeline: [], glossary: [] });
   });
 
   it('sets the worldview free-text field', () => {

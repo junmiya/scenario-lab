@@ -148,6 +148,7 @@ export function EditorPage(): ReactElement {
                     pageCount: 10,
                   },
                   worldbuilding: script.worldbuilding ?? {
+                    theme: '',
                     characters: [],
                     worldview: '',
                     timeline: [],
