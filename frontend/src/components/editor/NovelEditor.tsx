@@ -29,6 +29,8 @@ import {
   downloadTextFile,
   backupFilename,
 } from '../../services/novelBackupService';
+import { NovelAdvicePanel } from '../advice/NovelAdvicePanel';
+import { NovelDiscussionPanel, type NovelDiscussionMessage } from '../advice/NovelDiscussionPanel';
 
 interface NovelEditorProps {
   state: EditorState;
@@ -54,8 +56,36 @@ export function NovelEditor({ state, setState }: NovelEditorProps): ReactElement
   const [activeChapterId, setActiveChapterId] = useState<string | null>(null);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [backupMessage, setBackupMessage] = useState('');
+  const [discussionMessages, setDiscussionMessages] = useState<NovelDiscussionMessage[]>([]);
   const bodyRef = useRef<EditorHandle | null>(null);
   const importRef = useRef<HTMLInputElement | null>(null);
+
+  // Flatten chapters/sections into a single body string for AI context.
+  const flatBody = [...novelContent.chapters]
+    .sort((a, b) => a.order - b.order)
+    .map((c) => {
+      const sectionText = [...(c.sections ?? [])]
+        .sort((a, b) => a.order - b.order)
+        .map((s) => s.body)
+        .join('\n');
+      return [c.body, sectionText].filter(Boolean).join('\n');
+    })
+    .filter(Boolean)
+    .join('\n\n');
+
+  // Theme/worldbuilding summary appended to advice prompts for context.
+  const contextSummary = [
+    worldbuilding.theme ? `テーマ: ${worldbuilding.theme}` : '',
+    worldbuilding.worldview ? `世界観: ${worldbuilding.worldview}` : '',
+    worldbuilding.characters.length > 0
+      ? `登場人物: ${worldbuilding.characters
+          .map((c) => c.name)
+          .filter(Boolean)
+          .join('、')}`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   const backupInput = () => ({
     title: state.title,
@@ -251,20 +281,21 @@ export function NovelEditor({ state, setState }: NovelEditorProps): ReactElement
       {/* ── 設定資料 ── */}
       <WorldbuildingPanel
         value={worldbuilding}
-        direction={direction}
         onChange={(wb) => setState((current) => ({ ...current, worldbuilding: wb }))}
       />
 
-      {/* ── あらすじ（小説・プレーン） ── */}
+      {/* ── あらすじ（AI評価を上下に, FR-029） ── */}
       <section className="section-container" aria-label="あらすじ">
         <h3>あらすじ</h3>
-        <VerticalEditor
-          value={state.synopsis}
-          onChange={(value) => setState((current) => ({ ...current, synopsis: value }))}
-          lineCount={Math.max(5, lineLength)}
-          charsPerColumn={lineLength}
-          placeholder="あらすじを入力..."
-        />
+        <NovelAdvicePanel label="あらすじ" text={state.synopsis} contextSummary={contextSummary}>
+          <VerticalEditor
+            value={state.synopsis}
+            onChange={(value) => setState((current) => ({ ...current, synopsis: value }))}
+            lineCount={Math.max(5, lineLength)}
+            charsPerColumn={lineLength}
+            placeholder="あらすじを入力..."
+          />
+        </NovelAdvicePanel>
       </section>
 
       {/* ── 章一覧 ── */}
@@ -307,41 +338,54 @@ export function NovelEditor({ state, setState }: NovelEditorProps): ReactElement
           </span>
         </div>
 
-        {!activeChapter ? (
-          <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-            章一覧から章（または節）を選ぶと本文を編集できます。章がなければ「章を追加」してください。
-          </p>
-        ) : direction === 'vertical' ? (
-          <div className="novel-body-vertical">
-            <VerticalEditor
-              ref={bodyRef}
-              key={activeSection ? activeSection.id : activeChapter.id}
+        <NovelAdvicePanel label="本文" text={flatBody} contextSummary={contextSummary}>
+          {!activeChapter ? (
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+              章一覧から章（または節）を選ぶと本文を編集できます。章がなければ「章を追加」してください。
+            </p>
+          ) : direction === 'vertical' ? (
+            <div className="novel-body-vertical">
+              <VerticalEditor
+                ref={bodyRef}
+                key={activeSection ? activeSection.id : activeChapter.id}
+                value={activeBody}
+                onChange={onBodyChange}
+                lineCount={Math.max(10, lineLength)}
+                charsPerColumn={lineLength}
+                placeholder="本文を入力..."
+              />
+            </div>
+          ) : (
+            <textarea
+              aria-label="本文"
+              className="novel-body-horizontal"
               value={activeBody}
-              onChange={onBodyChange}
-              lineCount={Math.max(10, lineLength)}
-              charsPerColumn={lineLength}
+              onChange={(e) => onBodyChange(e.currentTarget.value)}
               placeholder="本文を入力..."
+              rows={14}
+              style={{
+                width: '100%',
+                minHeight: '20rem',
+                padding: '0.75rem',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-md)',
+                lineHeight: 1.8,
+                resize: 'vertical',
+              }}
             />
-          </div>
-        ) : (
-          <textarea
-            aria-label="本文"
-            className="novel-body-horizontal"
-            value={activeBody}
-            onChange={(e) => onBodyChange(e.currentTarget.value)}
-            placeholder="本文を入力..."
-            rows={14}
-            style={{
-              width: '100%',
-              minHeight: '20rem',
-              padding: '0.75rem',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-md)',
-              lineHeight: 1.8,
-              resize: 'vertical',
-            }}
-          />
-        )}
+          )}
+        </NovelAdvicePanel>
+      </section>
+
+      {/* ── AI 対話批評（著者の相談・FR-030） ── */}
+      <section className="section-container" aria-label="AI対話批評">
+        <h3>AI対話批評</h3>
+        <NovelDiscussionPanel
+          synopsis={state.synopsis}
+          content={flatBody}
+          messages={discussionMessages}
+          onMessagesChange={setDiscussionMessages}
+        />
       </section>
 
       {/* ── バックアップ（JSON 完全復元 / Markdown 可読, FR-031） ── */}

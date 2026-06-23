@@ -14,8 +14,6 @@ import {
 interface WorldbuildingPanelProps {
   value: Worldbuilding;
   onChange: (value: Worldbuilding) => void;
-  /** Writing direction — free-text fields follow it (FR-026). Tables stay horizontal. */
-  direction?: 'vertical' | 'horizontal';
   /** Optional AI generate-from-theme action (FR-028, US2). Hidden when undefined. */
   onGenerateFromTheme?: () => void;
 }
@@ -41,28 +39,24 @@ const th: React.CSSProperties = {
 };
 
 /**
- * Novel setting-reference editor (FR-015 / FR-027): テーマ → 世界観 → 人物 → 年表 → 用語集.
- * Free-text fields (テーマ・世界観) follow the writing direction (FR-026); structured
- * tables stay horizontal. All fields optional — empty is valid (skippable).
+ * Novel setting-reference editor (FR-015 / FR-027): テーマ → 世界観 → 登場人物名 → 年表 → 用語集.
+ * The whole panel is laid out horizontally for consistent, usable form/table entry
+ * (the manuscript body/synopsis follow the writing direction; reference material does not).
+ * All fields optional — empty is valid (skippable).
  */
 export function WorldbuildingPanel({
   value,
   onChange,
-  direction = 'vertical',
   onGenerateFromTheme,
 }: WorldbuildingPanelProps): ReactElement {
   const updateCharacters = (characters: WorldbuildingCharacter[]): void => {
     onChange({ ...value, characters });
   };
 
-  // Free-text fields adopt vertical writing when in vertical mode (FR-026).
   const textAreaStyle: React.CSSProperties = {
     ...cellInput,
     resize: 'vertical',
-    minHeight: direction === 'vertical' ? '8rem' : '4rem',
-    ...(direction === 'vertical'
-      ? { writingMode: 'vertical-rl', height: '10rem', width: '100%' }
-      : {}),
+    minHeight: '4rem',
   };
 
   return (

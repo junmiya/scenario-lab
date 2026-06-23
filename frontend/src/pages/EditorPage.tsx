@@ -467,93 +467,95 @@ export function EditorPage(): ReactElement {
       }
     >
       <main className="main-container">
-        {/* ── 書式設定 ── */}
-        <section className="section-container" aria-label="書式設定">
-          <h3>書式設定</h3>
-          <div
-            style={{
-              display: 'flex',
-              gap: 'var(--space-lg)',
-              alignItems: 'end',
-              flexWrap: 'wrap',
-            }}
-          >
-            <label style={{ fontSize: '0.8125rem' }}>
-              字数/行
-              <input
-                type="number"
-                min={10}
-                max={40}
-                value={state.settings.lineLength}
-                onChange={(event) => {
-                  const lineLength = Number(event.currentTarget.value);
-                  setState((current) => {
-                    const s = { ...current };
-                    s.settings = { ...s.settings, lineLength };
-                    s.metrics = recalculateGuideMetrics(s.content, s.settings);
-                    s.synopsisSettings = { ...s.synopsisSettings, lineLength };
-                    s.synopsisMetrics = recalculateGuideMetrics(s.synopsis, s.synopsisSettings);
-                    s.characterSettings = { ...s.characterSettings, lineLength };
-                    s.characterMetrics = recalculateGuideMetrics(
-                      s.characterText,
-                      s.characterSettings,
-                    );
-                    return s;
-                  });
-                }}
-                style={{ width: '4rem' }}
-              />
-            </label>
-            <label style={{ fontSize: '0.8125rem' }}>
-              行数/枚
-              <input
-                type="number"
-                min={1}
-                max={40}
-                value={state.settings.linesPerPage}
-                onChange={(event) => {
-                  const linesPerPage = Number(event.currentTarget.value);
-                  setState((current) => {
-                    const s = { ...current };
-                    s.settings = { ...s.settings, linesPerPage };
-                    s.metrics = recalculateGuideMetrics(s.content, s.settings);
-                    s.synopsisSettings = { ...s.synopsisSettings, linesPerPage };
-                    s.synopsisMetrics = recalculateGuideMetrics(s.synopsis, s.synopsisSettings);
-                    s.characterSettings = { ...s.characterSettings, linesPerPage };
-                    s.characterMetrics = recalculateGuideMetrics(
-                      s.characterText,
-                      s.characterSettings,
-                    );
-                    return s;
-                  });
-                }}
-                style={{ width: '4rem' }}
-              />
-            </label>
-            <span
+        {/* ── 書式設定（脚本モード専用。小説は NovelEditor 側の書式設定を使用） ── */}
+        {state.contentType === 'screenplay' && (
+          <section className="section-container" aria-label="書式設定">
+            <h3>書式設定</h3>
+            <div
               style={{
-                fontSize: '0.75rem',
-                color: 'var(--text-secondary)',
-                borderLeft: '1px solid var(--color-border)',
-                paddingLeft: 'var(--space-md)',
+                display: 'flex',
+                gap: 'var(--space-lg)',
+                alignItems: 'end',
+                flexWrap: 'wrap',
               }}
             >
-              1枚 = {state.settings.lineLength}字 × {state.settings.linesPerPage}行 ={' '}
-              {state.settings.lineLength * state.settings.linesPerPage}字
-            </span>
-            <span
-              style={{
-                fontSize: '0.75rem',
-                color: 'var(--text-secondary)',
-                borderLeft: '1px solid var(--color-border)',
-                paddingLeft: 'var(--space-md)',
-              }}
-            >
-              あらすじ {state.synopsisSettings.pageCount}枚 / 登場人物{' '}
-              {state.characterSettings.pageCount}枚 / 本文 {state.settings.pageCount}枚
-            </span>
-          </div>
-        </section>
+              <label style={{ fontSize: '0.8125rem' }}>
+                字数/行
+                <input
+                  type="number"
+                  min={10}
+                  max={40}
+                  value={state.settings.lineLength}
+                  onChange={(event) => {
+                    const lineLength = Number(event.currentTarget.value);
+                    setState((current) => {
+                      const s = { ...current };
+                      s.settings = { ...s.settings, lineLength };
+                      s.metrics = recalculateGuideMetrics(s.content, s.settings);
+                      s.synopsisSettings = { ...s.synopsisSettings, lineLength };
+                      s.synopsisMetrics = recalculateGuideMetrics(s.synopsis, s.synopsisSettings);
+                      s.characterSettings = { ...s.characterSettings, lineLength };
+                      s.characterMetrics = recalculateGuideMetrics(
+                        s.characterText,
+                        s.characterSettings,
+                      );
+                      return s;
+                    });
+                  }}
+                  style={{ width: '4rem' }}
+                />
+              </label>
+              <label style={{ fontSize: '0.8125rem' }}>
+                行数/枚
+                <input
+                  type="number"
+                  min={1}
+                  max={40}
+                  value={state.settings.linesPerPage}
+                  onChange={(event) => {
+                    const linesPerPage = Number(event.currentTarget.value);
+                    setState((current) => {
+                      const s = { ...current };
+                      s.settings = { ...s.settings, linesPerPage };
+                      s.metrics = recalculateGuideMetrics(s.content, s.settings);
+                      s.synopsisSettings = { ...s.synopsisSettings, linesPerPage };
+                      s.synopsisMetrics = recalculateGuideMetrics(s.synopsis, s.synopsisSettings);
+                      s.characterSettings = { ...s.characterSettings, linesPerPage };
+                      s.characterMetrics = recalculateGuideMetrics(
+                        s.characterText,
+                        s.characterSettings,
+                      );
+                      return s;
+                    });
+                  }}
+                  style={{ width: '4rem' }}
+                />
+              </label>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--text-secondary)',
+                  borderLeft: '1px solid var(--color-border)',
+                  paddingLeft: 'var(--space-md)',
+                }}
+              >
+                1枚 = {state.settings.lineLength}字 × {state.settings.linesPerPage}行 ={' '}
+                {state.settings.lineLength * state.settings.linesPerPage}字
+              </span>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--text-secondary)',
+                  borderLeft: '1px solid var(--color-border)',
+                  paddingLeft: 'var(--space-md)',
+                }}
+              >
+                あらすじ {state.synopsisSettings.pageCount}枚 / 登場人物{' '}
+                {state.characterSettings.pageCount}枚 / 本文 {state.settings.pageCount}枚
+              </span>
+            </div>
+          </section>
+        )}
 
         {/* ── タイトル・著者 ── */}
         <section className="section-container" aria-label="タイトル・著者">
