@@ -1,6 +1,10 @@
 import type { AdviceProvider } from '../stores/adviceStore';
 import { isFunctionsApiConfigured, postFunctionsJson, requestFunctionsJson } from './functionsApi';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import {
+  SCREENPLAY_STRUCTURE_PROMPT,
+  SCREENPLAY_EMOTIONAL_PROMPT,
+} from '../modes/screenplay/prompts';
 
 export interface AdviceModelDescriptor {
   provider: AdviceProvider;
@@ -37,14 +41,10 @@ const fallbackModels: AdviceModelDescriptor[] = [
 ];
 
 // --- AI Prompt Templates ---
-
-const STRUCTURE_PROMPT = `あなたはプロの脚本家です。以下の脚本を分析し、「構成」の観点から具体的なアドバイスをしてください。
-起承転結の流れ、シーンの繋がり、伏線の配置などを評価し、改善点を提案してください。
-回答は日本語で、箇条書きで簡潔にまとめてください。`;
-
-const EMOTIONAL_PROMPT = `あなたはプロの脚本家です。以下の脚本を分析し、「感情表現・キャラクター描写」の観点から具体的なアドバイスをしてください。
-登場人物の動機、感情の起伏、セリフの自然さなどを評価し、改善点を提案してください。
-回答は日本語で、箇条書きで簡潔にまとめてください。`;
+// Screenplay prompts live in the mode registry (single source of truth).
+// Novel-mode prompt routing is wired in Phase 4 (US2).
+const STRUCTURE_PROMPT = SCREENPLAY_STRUCTURE_PROMPT;
+const EMOTIONAL_PROMPT = SCREENPLAY_EMOTIONAL_PROMPT;
 
 /**
  * Call Gemini API directly from the browser (prototyping mode).

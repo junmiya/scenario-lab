@@ -9,6 +9,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
   comments: true,
   aiAdvice: true,
   aiDiscussion: true,
+  novelMode: true,
 };
 
 const FeatureFlagsContext = createContext<FeatureFlags>(DEFAULT_FLAGS);

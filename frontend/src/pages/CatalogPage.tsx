@@ -6,18 +6,23 @@ import {
   listScripts,
   createScript,
   deleteScript,
+  resolveScriptContentType,
+  type ContentType,
   type FirestoreScript,
 } from '../lib/firebase/firestoreService';
+import { useFeatureFlags } from '../contexts/FeatureFlagsContext';
 import { Plus, FileText, Trash2, Clock, Send } from 'lucide-react';
 import { SubmitToGroupDialog } from '../components/groups/SubmitToGroupDialog';
 
 export function CatalogPage(): ReactElement {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const flags = useFeatureFlags();
   const [scripts, setScripts] = useState<FirestoreScript[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [submitTarget, setSubmitTarget] = useState<{ id: string; title: string } | null>(null);
+  const [showModeModal, setShowModeModal] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -37,20 +42,31 @@ export function CatalogPage(): ReactElement {
     }
   };
 
-  const handleCreate = async () => {
+  const handleCreate = async (contentType: ContentType = 'screenplay') => {
     if (!user) return;
     setCreating(true);
+    setShowModeModal(false);
     try {
       const newId = await createScript(user.uid, {
-        title: '新しい脚本',
+        title: contentType === 'novel' ? '新しい小説' : '新しい脚本',
         authorName: user.displayName || '',
         settings: { lineLength: 20, pageCount: 10 },
+        contentType,
       });
       navigate(`/editor/${newId}`);
     } catch (error) {
-      console.error('Failed to create script:', error);
+      console.error('Failed to create work:', error);
     } finally {
       setCreating(false);
+    }
+  };
+
+  // Novel mode on → ask which mode; off → keep legacy single-click screenplay create.
+  const onNewClick = (): void => {
+    if (flags.novelMode) {
+      setShowModeModal(true);
+    } else {
+      void handleCreate('screenplay');
     }
   };
 
@@ -99,16 +115,16 @@ export function CatalogPage(): ReactElement {
                 margin: 0,
               }}
             >
-              マイ脚本
+              マイ作品
             </h1>
             <p
               style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.25rem' }}
             >
-              作品を選択して編集するか、新しい脚本を作成してください。
+              作品を選択して編集するか、新しい作品を作成してください。
             </p>
           </div>
           <button
-            onClick={() => void handleCreate()}
+            onClick={onNewClick}
             disabled={creating}
             style={{
               display: 'flex',
@@ -158,10 +174,10 @@ export function CatalogPage(): ReactElement {
                 margin: '0 0 0.5rem',
               }}
             >
-              まだ脚本がありません
+              まだ作品がありません
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-              「新規作成」ボタンをクリックして、最初の脚本を書き始めましょう。
+              「新規作成」ボタンをクリックして、最初の作品を書き始めましょう。
             </p>
           </div>
         )}
@@ -216,6 +232,23 @@ export function CatalogPage(): ReactElement {
                       flexGrow: 1,
                     }}
                   >
+                    <span
+                      style={{
+                        fontSize: '0.625rem',
+                        fontWeight: 700,
+                        padding: '0.0625rem 0.375rem',
+                        marginRight: '0.375rem',
+                        borderRadius: 'var(--radius-sm)',
+                        verticalAlign: 'middle',
+                        backgroundColor:
+                          resolveScriptContentType(script.contentType) === 'novel'
+                            ? 'var(--color-primary-light, #dbeafe)'
+                            : 'var(--color-surface-alt, #f1f5f9)',
+                        color: 'var(--text-secondary)',
+                      }}
+                    >
+                      {resolveScriptContentType(script.contentType) === 'novel' ? '小説' : '脚本'}
+                    </span>
                     {script.title || '(無題)'}
                   </h3>
                   <div
@@ -292,7 +325,100 @@ export function CatalogPage(): ReactElement {
             onSubmitted={() => setSubmitTarget(null)}
           />
         )}
+
+        {/* モード選択モーダル（脚本／小説） */}
+        {showModeModal && (
+          <div
+            role="dialog"
+            aria-label="作品タイプの選択"
+            onClick={() => setShowModeModal(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(0,0,0,0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 50,
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: 'var(--color-surface)',
+                borderRadius: 'var(--radius-xl)',
+                padding: '1.5rem',
+                width: 'min(420px, 90vw)',
+                boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+              }}
+            >
+              <h3 style={{ margin: '0 0 0.25rem', fontSize: '1.125rem' }}>新しい作品を作成</h3>
+              <p
+                style={{
+                  margin: '0 0 1rem',
+                  fontSize: '0.8125rem',
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                作品タイプを選択してください。作成後は変更できません。
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => void handleCreate('screenplay')}
+                  disabled={creating}
+                  style={modeButtonStyle}
+                >
+                  <FileText size={24} />
+                  <span style={{ fontWeight: 600 }}>脚本</span>
+                  <span style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)' }}>
+                    柱・ト書き・セリフ／縦書き
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleCreate('novel')}
+                  disabled={creating}
+                  style={modeButtonStyle}
+                >
+                  <FileText size={24} />
+                  <span style={{ fontWeight: 600 }}>小説</span>
+                  <span style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)' }}>
+                    章立て・設定資料／縦書き
+                  </span>
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowModeModal(false)}
+                style={{
+                  marginTop: '1rem',
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.8125rem',
+                  cursor: 'pointer',
+                }}
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );
 }
+
+const modeButtonStyle: React.CSSProperties = {
+  flex: 1,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: '0.375rem',
+  padding: '1.25rem 1rem',
+  borderRadius: 'var(--radius-lg)',
+  border: '1px solid var(--color-border)',
+  backgroundColor: 'var(--color-bg-primary, #fff)',
+  cursor: 'pointer',
+};

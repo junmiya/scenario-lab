@@ -187,3 +187,16 @@
   font-size: 0.625rem;
   text-orientation: mixed;
 }
+
+/* ── 小説モード本文（writingDirection 連動, FR-007/T034） ── */
+/* 縦書き: 内部の VerticalEditor が writing-mode を持つため、ラッパーは横スクロールを許可 */
+.novel-body-vertical {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* 横書き: 通常の左→右、行間は脚本と揃えて 1.8 */
+.novel-body-horizontal {
+  writing-mode: horizontal-tb;
+  line-height: 1.8;
+}
