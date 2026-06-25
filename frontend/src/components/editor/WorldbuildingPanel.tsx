@@ -14,6 +14,8 @@ import {
 interface WorldbuildingPanelProps {
   value: Worldbuilding;
   onChange: (value: Worldbuilding) => void;
+  /** Writing direction — the whole panel (free text + tables) follows it (FR-026). */
+  direction?: 'vertical' | 'horizontal';
   /** Optional AI generate-from-theme action (FR-028, US2). Hidden when undefined. */
   onGenerateFromTheme?: () => void;
 }
@@ -40,23 +42,33 @@ const th: React.CSSProperties = {
 
 /**
  * Novel setting-reference editor (FR-015 / FR-027): テーマ → 世界観 → 登場人物名 → 年表 → 用語集.
- * The whole panel is laid out horizontally for consistent, usable form/table entry
- * (the manuscript body/synopsis follow the writing direction; reference material does not).
- * All fields optional — empty is valid (skippable).
+ * The whole panel (free text + tables) follows the writing direction (FR-026): when
+ * vertical, text fields and tables render vertically (writing-mode inherits into inputs);
+ * action labels/buttons stay horizontal for usability. All fields optional (skippable).
  */
 export function WorldbuildingPanel({
   value,
   onChange,
+  direction = 'vertical',
   onGenerateFromTheme,
 }: WorldbuildingPanelProps): ReactElement {
   const updateCharacters = (characters: WorldbuildingCharacter[]): void => {
     onChange({ ...value, characters });
   };
 
+  const isVertical = direction === 'vertical';
+  // Applied to text fields / tables so their content reads vertically when in vertical mode.
+  // writing-mode is inherited, so table cell <input>s become vertical too. Label rows and
+  // buttons sit in normal block flow above the fields, so they stay horizontal naturally.
+  const vText: React.CSSProperties = isVertical ? { writingMode: 'vertical-rl' } : {};
+  const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', ...vText };
+
   const textAreaStyle: React.CSSProperties = {
     ...cellInput,
-    resize: 'vertical',
-    minHeight: '4rem',
+    ...vText,
+    resize: isVertical ? 'horizontal' : 'vertical',
+    minHeight: isVertical ? undefined : '4rem',
+    ...(isVertical ? { height: '12rem', width: 'auto', minWidth: '8rem' } : {}),
   };
 
   return (
@@ -84,7 +96,7 @@ export function WorldbuildingPanel({
           onChange={(e) => onChange({ ...value, theme: e.currentTarget.value })}
           placeholder="作品の主題（例: 喪失と再生、AI と人間の境界...）"
           rows={2}
-          style={{ ...cellInput, resize: 'vertical', minHeight: '3rem' }}
+          style={textAreaStyle}
         />
       </div>
 
@@ -116,7 +128,7 @@ export function WorldbuildingPanel({
         {value.characters.length === 0 ? (
           <p style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)' }}>未登録</p>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table style={tableStyle}>
             <thead>
               <tr>
                 <th style={th}>名前</th>
@@ -217,7 +229,7 @@ export function WorldbuildingPanel({
         {value.timeline.length === 0 ? (
           <p style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)' }}>未登録</p>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table style={tableStyle}>
             <thead>
               <tr>
                 <th style={th}>日時</th>
@@ -291,7 +303,7 @@ export function WorldbuildingPanel({
         {value.glossary.length === 0 ? (
           <p style={{ fontSize: '0.6875rem', color: 'var(--text-secondary)' }}>未登録</p>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table style={tableStyle}>
             <thead>
               <tr>
                 <th style={th}>用語</th>

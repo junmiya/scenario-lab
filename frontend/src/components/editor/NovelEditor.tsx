@@ -278,9 +278,10 @@ export function NovelEditor({ state, setState }: NovelEditorProps): ReactElement
         </div>
       </section>
 
-      {/* ── 設定資料 ── */}
+      {/* ── 設定資料（書字方向に追従） ── */}
       <WorldbuildingPanel
         value={worldbuilding}
+        direction={direction}
         onChange={(wb) => setState((current) => ({ ...current, worldbuilding: wb }))}
       />
 
